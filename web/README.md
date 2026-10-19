@@ -14,4 +14,4 @@ Current pages:
 - `/sign-in` — magic link (email) and Google via Supabase Auth.
 - `/` — list and create workspaces (requires auth).
 
-`src/lib/database.types.ts` is hand-written for now; regenerate with `supabase gen types typescript --linked` once the project is linked.
+`src/lib/database.types.ts` is generated. After any migration run `supabase gen types typescript --linked > web/src/lib/database.types.ts` from the repo root.

@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useAuth } from '../lib/useAuth'
-import type { Workspace } from '../lib/database.types'
+import type { Workspace } from '../lib/types'
 import { supabase } from '../lib/supabase'
 
 export function Workspaces() {
