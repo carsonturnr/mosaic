@@ -10,12 +10,12 @@ def test_conforms_to_protocol() -> None:
 
 
 def test_structure_is_consistent() -> None:
-    src = SandboxSyntheticSource(seed=1, n_ads=10)
+    src = SandboxSyntheticSource(seed=1, n_ads=12)
     campaign_ids = {c.external_id for c in src.list_campaigns()}
     ad_set_ids = {a.external_id for a in src.list_ad_sets()}
     assert all(a.campaign_external_id in campaign_ids for a in src.list_ad_sets())
     ads = src.list_ads()
-    assert len(ads) == 10
+    assert len(ads) == 12
     assert all(a.ad_set_external_id in ad_set_ids for a in ads)
     for a in ads:
         creative = src.get_creative(a.creative_external_id)
@@ -76,7 +76,7 @@ def test_subwindow_matches_full_window() -> None:
 
 
 def test_download_media_writes_file(tmp_path: Path) -> None:
-    src = SandboxSyntheticSource(seed=1, n_ads=2, media_dir=tmp_path)
+    src = SandboxSyntheticSource(seed=1, n_ads=12, media_dir=tmp_path)
     creative = src.get_creative(src.list_ads()[0].creative_external_id)
     media = src.download_media(creative)
     assert media.path.exists()
@@ -87,7 +87,7 @@ def test_download_media_writes_file(tmp_path: Path) -> None:
 
 
 def test_ground_truth_covers_every_creative() -> None:
-    src = SandboxSyntheticSource(seed=1, n_ads=8)
+    src = SandboxSyntheticSource(seed=1, n_ads=12)
     truth = src.ground_truth_tags()
     assert set(truth) == {a.creative_external_id for a in src.list_ads()}
     assert all("format" in tags for tags in truth.values())

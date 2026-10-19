@@ -1,0 +1,348 @@
+{
+  "seed": 42,
+  "start_date": "2026-07-21",
+  "days": 90,
+  "n_ads": 24,
+  "patterns": [
+    {
+      "kind": "winning_hook",
+      "description": "Hook type 'curiosity/question' has ~1.5x CTR and ~1.4x hook rate.",
+      "ad_external_ids": [
+        "syn_ad_005",
+        "syn_ad_006",
+        "syn_ad_012",
+        "syn_ad_014"
+      ],
+      "creative_external_ids": [
+        "syn_cr_005",
+        "syn_cr_006",
+        "syn_cr_012",
+        "syn_cr_014"
+      ],
+      "details": {
+        "hook_type": "curiosity/question",
+        "ctr_mult": 1.5,
+        "hook_rate_mult": 1.4
+      }
+    },
+    {
+      "kind": "fatigue",
+      "description": "Hook rate and CTR decay ~1.2%/day after day 14, floored at 45%.",
+      "ad_external_ids": [
+        "syn_ad_000",
+        "syn_ad_001"
+      ],
+      "creative_external_ids": [
+        "syn_cr_000",
+        "syn_cr_001"
+      ],
+      "details": {
+        "onset_day": 14,
+        "decay_per_day": 0.012,
+        "floor": 0.45
+      }
+    },
+    {
+      "kind": "hidden_winner",
+      "description": "Low spend (~12% of a typical ad) but 1.8x CTR and 1.6x CVR.",
+      "ad_external_ids": [
+        "syn_ad_002"
+      ],
+      "creative_external_ids": [
+        "syn_cr_002"
+      ],
+      "details": {
+        "spend_weight": 0.12,
+        "ctr_mult": 1.8,
+        "cvr_mult": 1.6
+      }
+    },
+    {
+      "kind": "static_vs_video",
+      "description": "Video base CTR 1.2% vs static 0.8%; static CPM ~30% lower.",
+      "ad_external_ids": [
+        "syn_ad_018",
+        "syn_ad_019",
+        "syn_ad_020",
+        "syn_ad_021",
+        "syn_ad_022",
+        "syn_ad_023"
+      ],
+      "creative_external_ids": [
+        "syn_cr_018",
+        "syn_cr_019",
+        "syn_cr_020",
+        "syn_cr_021",
+        "syn_cr_022",
+        "syn_cr_023"
+      ],
+      "details": {
+        "video_ctr": 0.012,
+        "static_ctr": 0.008,
+        "static_cpm_mult": 0.7
+      }
+    },
+    {
+      "kind": "near_duplicate",
+      "description": "Same tags and script, re-cut; shared performance levers.",
+      "ad_external_ids": [
+        "syn_ad_003",
+        "syn_ad_004"
+      ],
+      "creative_external_ids": [
+        "syn_cr_003",
+        "syn_cr_004"
+      ],
+      "details": {}
+    },
+    {
+      "kind": "near_duplicate",
+      "description": "Same tags and script, re-cut; shared performance levers.",
+      "ad_external_ids": [
+        "syn_ad_005",
+        "syn_ad_006"
+      ],
+      "creative_external_ids": [
+        "syn_cr_005",
+        "syn_cr_006"
+      ],
+      "details": {}
+    }
+  ],
+  "ground_truth_tags": {
+    "syn_cr_000": {
+      "format": "UGC",
+      "angle": "quality/ingredients",
+      "persona": "fitness beginner",
+      "offer": "% discount",
+      "proof_type": "data/stat",
+      "cta": "shop now",
+      "length_bucket": "31-60s",
+      "hook_type": "offer-first"
+    },
+    "syn_cr_001": {
+      "format": "UGC",
+      "angle": "performance/results",
+      "persona": "health-conscious professional",
+      "offer": "$ off",
+      "proof_type": "data/stat",
+      "cta": "sign up",
+      "length_bucket": "16-30s",
+      "hook_type": "us-vs-them"
+    },
+    "syn_cr_002": {
+      "format": "UGC",
+      "angle": "price/value",
+      "persona": "gift shopper",
+      "offer": "bundle",
+      "proof_type": "testimonial",
+      "cta": "shop now",
+      "length_bucket": "31-60s",
+      "hook_type": "stat/number"
+    },
+    "syn_cr_003": {
+      "format": "product demo",
+      "angle": "social proof",
+      "persona": "busy mom",
+      "offer": "trial",
+      "proof_type": "expert",
+      "cta": "shop now",
+      "length_bucket": ">60s",
+      "hook_type": "us-vs-them"
+    },
+    "syn_cr_004": {
+      "format": "product demo",
+      "angle": "social proof",
+      "persona": "busy mom",
+      "offer": "trial",
+      "proof_type": "expert",
+      "cta": "shop now",
+      "length_bucket": ">60s",
+      "hook_type": "us-vs-them"
+    },
+    "syn_cr_005": {
+      "format": "UGC",
+      "angle": "quality/ingredients",
+      "persona": "skeptical buyer",
+      "offer": "none",
+      "proof_type": "press",
+      "cta": "shop now",
+      "length_bucket": "<=15s",
+      "hook_type": "curiosity/question"
+    },
+    "syn_cr_006": {
+      "format": "UGC",
+      "angle": "quality/ingredients",
+      "persona": "skeptical buyer",
+      "offer": "none",
+      "proof_type": "press",
+      "cta": "shop now",
+      "length_bucket": "<=15s",
+      "hook_type": "curiosity/question"
+    },
+    "syn_cr_007": {
+      "format": "product demo",
+      "angle": "convenience",
+      "persona": "health-conscious professional",
+      "offer": "% discount",
+      "proof_type": "expert",
+      "cta": "shop now",
+      "length_bucket": "31-60s",
+      "hook_type": "bold claim"
+    },
+    "syn_cr_008": {
+      "format": "founder story",
+      "angle": "identity/lifestyle",
+      "persona": "busy mom",
+      "offer": "$ off",
+      "proof_type": "press",
+      "cta": "shop now",
+      "length_bucket": "16-30s",
+      "hook_type": "testimonial"
+    },
+    "syn_cr_009": {
+      "format": "founder story",
+      "angle": "identity/lifestyle",
+      "persona": "fitness beginner",
+      "offer": "trial",
+      "proof_type": "before/after",
+      "cta": "get offer",
+      "length_bucket": ">60s",
+      "hook_type": "bold claim"
+    },
+    "syn_cr_010": {
+      "format": "founder story",
+      "angle": "problem-solution",
+      "persona": "health-conscious professional",
+      "offer": "free gift",
+      "proof_type": "testimonial",
+      "cta": "shop now",
+      "length_bucket": "16-30s",
+      "hook_type": "bold claim"
+    },
+    "syn_cr_011": {
+      "format": "UGC",
+      "angle": "price/value",
+      "persona": "gift shopper",
+      "offer": "none",
+      "proof_type": "before/after",
+      "cta": "get offer",
+      "length_bucket": "16-30s",
+      "hook_type": "pattern interrupt"
+    },
+    "syn_cr_012": {
+      "format": "UGC",
+      "angle": "convenience",
+      "persona": "health-conscious professional",
+      "offer": "free shipping",
+      "proof_type": "press",
+      "cta": "learn more",
+      "length_bucket": "31-60s",
+      "hook_type": "curiosity/question"
+    },
+    "syn_cr_013": {
+      "format": "product demo",
+      "angle": "price/value",
+      "persona": "health-conscious professional",
+      "offer": "none",
+      "proof_type": "press",
+      "cta": "learn more",
+      "length_bucket": ">60s",
+      "hook_type": "offer-first"
+    },
+    "syn_cr_014": {
+      "format": "talking head",
+      "angle": "performance/results",
+      "persona": "health-conscious professional",
+      "offer": "bundle",
+      "proof_type": "before/after",
+      "cta": "shop now",
+      "length_bucket": "31-60s",
+      "hook_type": "curiosity/question"
+    },
+    "syn_cr_015": {
+      "format": "talking head",
+      "angle": "convenience",
+      "persona": "busy mom",
+      "offer": "trial",
+      "proof_type": "press",
+      "cta": "shop now",
+      "length_bucket": ">60s",
+      "hook_type": "offer-first"
+    },
+    "syn_cr_016": {
+      "format": "founder story",
+      "angle": "problem-solution",
+      "persona": "fitness beginner",
+      "offer": "$ off",
+      "proof_type": "data/stat",
+      "cta": "learn more",
+      "length_bucket": "16-30s",
+      "hook_type": "us-vs-them"
+    },
+    "syn_cr_017": {
+      "format": "montage/B-roll",
+      "angle": "quality/ingredients",
+      "persona": "busy mom",
+      "offer": "bundle",
+      "proof_type": "none",
+      "cta": "sign up",
+      "length_bucket": "16-30s",
+      "hook_type": "offer-first"
+    },
+    "syn_cr_018": {
+      "format": "static image",
+      "angle": "quality/ingredients",
+      "persona": "busy mom",
+      "offer": "none",
+      "proof_type": "press",
+      "cta": "learn more",
+      "length_bucket": "static"
+    },
+    "syn_cr_019": {
+      "format": "text-on-screen",
+      "angle": "quality/ingredients",
+      "persona": "health-conscious professional",
+      "offer": "% discount",
+      "proof_type": "data/stat",
+      "cta": "sign up",
+      "length_bucket": "static"
+    },
+    "syn_cr_020": {
+      "format": "text-on-screen",
+      "angle": "quality/ingredients",
+      "persona": "busy mom",
+      "offer": "none",
+      "proof_type": "data/stat",
+      "cta": "get offer",
+      "length_bucket": "static"
+    },
+    "syn_cr_021": {
+      "format": "static image",
+      "angle": "convenience",
+      "persona": "busy mom",
+      "offer": "free gift",
+      "proof_type": "data/stat",
+      "cta": "learn more",
+      "length_bucket": "static"
+    },
+    "syn_cr_022": {
+      "format": "text-on-screen",
+      "angle": "price/value",
+      "persona": "gift shopper",
+      "offer": "% discount",
+      "proof_type": "testimonial",
+      "cta": "get offer",
+      "length_bucket": "static"
+    },
+    "syn_cr_023": {
+      "format": "static image",
+      "angle": "performance/results",
+      "persona": "health-conscious professional",
+      "offer": "none",
+      "proof_type": "none",
+      "cta": "shop now",
+      "length_bucket": "static"
+    }
+  }
+}
