@@ -28,6 +28,8 @@
 - **Meta access is working (Oct 19).** The app is connected to a separate business portfolio, **Mosaic Ads** (`1650747423354771`). A system user **`mosaic-sync`** (Admin) has the Mosaic app (full access) and the sandbox ad account granted to it. Its non-expiring token (ads_read, ads_management, business_management) lives in `.env` as `META_ACCESS_TOKEN` and successfully reads `act_1129851222828729`.
 - Personal user tokens do NOT work for the sandbox account; always use the system user token for API calls.
 - Business verification is not done yet; it is only needed for App Review (week 5).
+- **Token expiry:** the current system user token expires **Dec 18, 2026** (60-day), not never. Regenerate before then or pick "Never" next time.
+- **Sandbox creation tested (Oct 19):** campaigns, ad sets and image uploads CAN be created in the sandbox via the API (campaign `120330001596475419`, ad set `120330001596476119` exist as fixtures). Campaign creation requires `is_adset_budget_sharing_enabled=false` when not using CBO. Ad creatives/ads are untested because no Facebook page is assigned to the Mosaic Ads business or the `mosaic-sync` system user; add the "Mosaic Dev" page to the business and assign it to the system user, then test creatives.
 
 ---
 
