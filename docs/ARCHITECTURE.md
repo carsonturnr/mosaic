@@ -25,8 +25,9 @@
 
 - Meta developer app **"Mosaic"** created (App ID `4146949778771922`), in Development mode, with the **Create & manage ads with Marketing API** use case. `ads_read`, `ads_management`, `business_management`, `pages_show_list`, `pages_read_engagement` show "Ready for testing".
 - Sandbox ad account created: **`act_1129851222828729`** ("Mosaic Dev", USD, America/Chicago), associated with the "Mosaic Dev" Facebook page.
-- **Blocker:** API calls to the sandbox return `(#200) Ad account owner has NOT grant ads_management or ads_read permission` even though the token's scopes include both. Likely fix in progress: create a separate **Mosaic business portfolio** and connect it to the app under Use case → Settings → Business portfolio, then regenerate the token.
-- **Do not block on Meta.** Everything below except the live Meta adapter can be built against synthetic data.
+- **Meta access is working (Oct 19).** The app is connected to a separate business portfolio, **Mosaic Ads** (`1650747423354771`). A system user **`mosaic-sync`** (Admin) has the Mosaic app (full access) and the sandbox ad account granted to it. Its non-expiring token (ads_read, ads_management, business_management) lives in `.env` as `META_ACCESS_TOKEN` and successfully reads `act_1129851222828729`.
+- Personal user tokens do NOT work for the sandbox account; always use the system user token for API calls.
+- Business verification is not done yet; it is only needed for App Review (week 5).
 
 ---
 
