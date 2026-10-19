@@ -1,0 +1,32 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# node
+node_modules/
+web/dist/
+.vercel/
+
+# supabase local
+supabase/.branches/
+supabase/.temp/
+
+# evals output (results are committed only via eval_runs table)
+evals/results/
+
+# os / editor
+.DS_Store
+.idea/
+.vscode/
+*.log
