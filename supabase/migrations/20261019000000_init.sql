@@ -2,7 +2,6 @@
 -- Workspace-scoped tables; RLS policies live in the next migration.
 
 create extension if not exists vector;
-create extension if not exists pgcrypto;
 
 create type source_kind as enum ('meta_live', 'sandbox_synthetic', 'demo');
 create type creative_type as enum ('video', 'image', 'carousel');
