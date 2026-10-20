@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  worker:
+    name: worker (ruff + pytest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: worker/uv.lock
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run pytest -q
+
+  web:
+    name: web (lint + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+        env:
+          VITE_SUPABASE_URL: https://example.supabase.co
+          VITE_SUPABASE_ANON_KEY: ci-placeholder
+
+  migrations:
+    name: migrations (postgres 16 + pgvector)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply migrations and seed against a Supabase-like shim
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 <<'SQL'
+          create schema auth;
+          create table auth.users (id uuid primary key);
+          create function auth.uid() returns uuid language sql stable as $$
+            select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+          create role anon nologin; create role authenticated nologin; create role service_role nologin;
+          create schema vault;
+          create table vault.secrets (id uuid primary key default gen_random_uuid(), name text, secret text);
+          create view vault.decrypted_secrets as select id, name, secret as decrypted_secret from vault.secrets;
+          create function vault.create_secret(s text, n text) returns uuid language sql as $$
+            insert into vault.secrets (name, secret) values (n, s) returning id $$;
+          create function vault.update_secret(i uuid, s text, n text) returns void language sql as $$
+            update vault.secrets set secret = s, name = n where id = i $$;
+          SQL
+          for f in supabase/migrations/*.sql supabase/seed.sql; do
+            echo "== $f"; psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f "$f"
+          done
