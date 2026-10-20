@@ -24,6 +24,8 @@ class Store(Protocol):
 
     def delete(self, table: str, **eq: Any) -> None: ...
 
+    def rpc(self, fn: str, params: Row) -> Any: ...
+
 
 class SupabaseStore:
     def __init__(self, url: str, service_role_key: str) -> None:
@@ -67,12 +69,16 @@ class SupabaseStore:
             q = q.in_(k, list(v)) if isinstance(v, list | tuple | set) else q.eq(k, v)
         q.execute()
 
+    def rpc(self, fn: str, params: Row) -> Any:
+        return self._client.rpc(fn, params).execute().data
+
 
 class MemoryStore:
     """In-memory Store with the same upsert semantics, for tests."""
 
     def __init__(self) -> None:
         self.tables: dict[str, list[Row]] = {}
+        self.secrets: dict[str, tuple[str, str]] = {}  # id -> (name, secret)
         self._next_id = 1
 
     def _gen_id(self) -> str:
@@ -109,6 +115,19 @@ class MemoryStore:
 
     def delete(self, table: str, **eq: Any) -> None:
         self.tables[table] = [r for r in self.tables.get(table, []) if not _matches(r, eq)]
+
+    def rpc(self, fn: str, params: Row) -> Any:
+        if fn == "vault_store_secret":
+            for sid, (name, _) in self.secrets.items():
+                if name == params["p_name"]:
+                    self.secrets[sid] = (name, params["p_secret"])
+                    return sid
+            sid = self._gen_id()
+            self.secrets[sid] = (params["p_name"], params["p_secret"])
+            return sid
+        if fn == "vault_read_secret":
+            return self.secrets[params["p_id"]][1]
+        raise NotImplementedError(fn)
 
 
 def _matches(row: Row, eq: dict[str, Any]) -> bool:

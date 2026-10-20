@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/useAuth'
 import type { Workspace } from '../lib/types'
 import { supabase } from '../lib/supabase'
@@ -53,7 +54,9 @@ export function Workspaces() {
         <ul className="mb-6 divide-y divide-neutral-200 rounded border border-neutral-200">
           {workspaces.map((w) => (
             <li key={w.id} className="flex items-center justify-between px-4 py-3">
-              <span>{w.name}</span>
+              <Link to={`/w/${w.id}`} className="underline">
+                {w.name}
+              </Link>
               {w.is_demo && <span className="text-xs text-neutral-500">demo</span>}
             </li>
           ))}

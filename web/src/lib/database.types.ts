@@ -838,6 +838,11 @@ export type Database = {
     }
     Functions: {
       owns_workspace: { Args: { ws: string }; Returns: boolean }
+      vault_read_secret: { Args: { p_id: string }; Returns: string }
+      vault_store_secret: {
+        Args: { p_name: string; p_secret: string }
+        Returns: string
+      }
     }
     Enums: {
       creative_type: "video" | "image" | "carousel"

@@ -23,7 +23,7 @@
 
 ---
 
-## 2. Current status (as of Oct 20, 2026)
+## 2. Current status (as of Oct 20, 2026, evening)
 
 - Meta developer app **"Mosaic"** created (App ID `4146949778771922`), in Development mode, with the **Create & manage ads with Marketing API** use case. `ads_read`, `ads_management`, `business_management`, `pages_show_list`, `pages_read_engagement` show "Ready for testing".
 - Sandbox ad account created: **`act_1129851222828729`** ("Mosaic Dev", USD, America/Chicago), associated with the "Mosaic Dev" Facebook page.
@@ -33,6 +33,8 @@
 - **Sandbox limits (tested):** campaigns, ad sets and image uploads work; ads and ad creatives cannot be created while the app is in Development mode. Ads, creatives and all KPIs therefore come from the synthetic layer (`SandboxSyntheticSource`). Switching the app to Live needs a Privacy Policy URL — optional.
 - Sandbox fixtures and gotchas: test campaign `120330001596475419`, ad set `120330001596476119`, page `1413908748461370`. Campaign creation requires `is_adset_budget_sharing_enabled=false` when not using CBO. Creative creation in dev mode fails with error subcode 1885183.
 - **Week 1 done:** private repo `carsonturnr/mosaic`; Supabase schema + derived-metrics view + taxonomy seed, RLS verified; worker `DataSource` protocol + pydantic models; synthetic generator v1 (all five planted patterns, deterministic, `evals/answer_key.json`, 17 tests); web scaffold (React 19, strict TS, Tailwind v4, magic-link + Google sign-in, workspace pages); test campaign/ad set/image in the sandbox as fixtures.
+- **Week 2 code done (Oct 20):** `mosaic.store` (Supabase + in-memory), `mosaic.sync` (idempotent upserts, `sync_runs`), `mosaic.seed` (synthetic workspace seeded in the hosted project: 24 ads, 90 days, ground-truth tags as `creative_tags` with `model='synthetic'`), `MetaLiveSource` (pagination, throttle backoff, appsecret_proof; insight mappers), `mosaic.jobs` (backfill / structure / today / restatement / refresh), FastAPI worker API (`/workspaces/{id}/refresh`, `/meta/adaccounts`, `/workspaces/{id}/meta/connect`; auth = Supabase user JWT with ownership check, or `WORKER_API_KEY`), `modal_app.py` (4-hourly + nightly schedules + ASGI), Vault helpers (`vault_store_secret` / `vault_read_secret`, service role only), web workspace page with Refresh and Connect Meta (FB JS SDK). 39 worker tests.
+- **Blocked / pending:** Meta Graph API returns "API access blocked" (code 200) for every call since Oct 20, including app-token calls — check the app dashboard for a restriction. Modal deploy needs an account. Facebook Login for Business needs a configuration id (`VITE_META_CONFIG_ID`).
 - **Creatives for development:** 20–40 public ads from ONE brand via the Meta Ad Library, stored in Supabase Storage only; the local media folder is git-ignored. **Before anything public** (demo video, deployed link, public repo), swap them for the owner's own creatives or a fictional brand so synthetic metrics never sit on a real company's ads.
 
 ---
