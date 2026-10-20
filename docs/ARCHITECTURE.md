@@ -1,6 +1,8 @@
 # Mosaic — Project Brief
 
-> Put this file in the repo root as `docs/ARCHITECTURE.md`. It is the source of truth for scope, architecture and build order.
+> Repo root file. Source of truth for Mosaic scope and architecture.
+>
+> **Related docs (in `docs/`):** `BUILD_BOARD.md` (live week-by-week plan for both projects — check items off as you finish them), `MOSAIC_MVP.md` and `STRIDE_LAB_MVP.md` (full MVP specs), `PROJECT_HISTORY.md` (why every decision was made). After completing work, update `docs/BUILD_BOARD.md` and §2 below.
 
 ## 1. What we're building
 
@@ -21,15 +23,17 @@
 
 ---
 
-## 2. Current status (as of Oct 19, 2026)
+## 2. Current status (as of Oct 20, 2026)
 
 - Meta developer app **"Mosaic"** created (App ID `4146949778771922`), in Development mode, with the **Create & manage ads with Marketing API** use case. `ads_read`, `ads_management`, `business_management`, `pages_show_list`, `pages_read_engagement` show "Ready for testing".
 - Sandbox ad account created: **`act_1129851222828729`** ("Mosaic Dev", USD, America/Chicago), associated with the "Mosaic Dev" Facebook page.
 - **Meta access is working (Oct 19).** The app is connected to a separate business portfolio, **Mosaic Ads** (`1650747423354771`). A system user **`mosaic-sync`** (Admin) has the Mosaic app (full access) and the sandbox ad account granted to it. Its non-expiring token (ads_read, ads_management, business_management) lives in `.env` as `META_ACCESS_TOKEN` and successfully reads `act_1129851222828729`.
 - Personal user tokens do NOT work for the sandbox account; always use the system user token for API calls.
 - Business verification is not done yet; it is only needed for App Review (week 5).
-- The system user token now **never expires** (regenerated Oct 19).
-- **Sandbox creation tested (Oct 19):** campaigns, ad sets and image uploads CAN be created in the sandbox via the API (campaign `120330001596475419`, ad set `120330001596476119` exist as fixtures). Campaign creation requires `is_adset_budget_sharing_enabled=false` when not using CBO. The "Mosaic Dev" page (`1413908748461370`) is owned by the Mosaic Ads business. **Ad creative creation is refused while the app is in Development mode** (error subcode 1885183: "must be in public to create this ad"). Switching the app to Live mode (needs a Privacy Policy URL under App settings → Basic) should unblock it; until then ads/creatives/metrics come from the synthetic layer, as planned.
+- **Sandbox limits (tested):** campaigns, ad sets and image uploads work; ads and ad creatives cannot be created while the app is in Development mode. Ads, creatives and all KPIs therefore come from the synthetic layer (`SandboxSyntheticSource`). Switching the app to Live needs a Privacy Policy URL — optional.
+- Sandbox fixtures and gotchas: test campaign `120330001596475419`, ad set `120330001596476119`, page `1413908748461370`. Campaign creation requires `is_adset_budget_sharing_enabled=false` when not using CBO. Creative creation in dev mode fails with error subcode 1885183.
+- **Week 1 done:** private repo `carsonturnr/mosaic`; Supabase schema + derived-metrics view + taxonomy seed, RLS verified; worker `DataSource` protocol + pydantic models; synthetic generator v1 (all five planted patterns, deterministic, `evals/answer_key.json`, 17 tests); web scaffold (React 19, strict TS, Tailwind v4, magic-link + Google sign-in, workspace pages); test campaign/ad set/image in the sandbox as fixtures.
+- **Creatives for development:** 20–40 public ads from ONE brand via the Meta Ad Library, stored in Supabase Storage only; the local media folder is git-ignored. **Before anything public** (demo video, deployed link, public repo), swap them for the owner's own creatives or a fictional brand so synthetic metrics never sit on a real company's ads.
 
 ---
 
@@ -371,7 +375,7 @@ Purpose: realistic daily KPIs for every ad with **planted patterns**, which also
 
 | Eval | Method | Target |
 | --- | --- | --- |
-| Tagging accuracy | Compare AI tags to ~100 hand-labeled ads (start with the owner's creatives + public examples) | Per-field F1 reported |
+| Tagging accuracy | Compare AI tags to ~100 hand-labeled public ads spanning 3–5 brands (kept private) | Per-field F1 reported |
 | Grounding | Validator over every report/brief | 100% of cited numbers match |
 | Diversity validity | Agreement with human "same concept?" labels on pairs | Agreement rate reported |
 | Planted problems | Run analysis on synthetic data; check each planted pattern is surfaced | All found |
@@ -415,17 +419,17 @@ MODAL_TOKEN_SECRET=
 
 ---
 
-## 14. Build order (~15 h/week; Concept MVP done Dec 6)
+## 14. Build order (~15 h/week; Mosaic MVP done Dec 6 — full checklist in docs/BUILD_BOARD.md)
 
 | Week of | Focus | Tasks |
 | --- | --- | --- |
-| Oct 19 | Foundation | Repo + Supabase + auth; migrations from §7; data-source interface; synthetic generator v1; 6–10 varied creatives (owner makes them); finish Meta access (business portfolio) |
-| Oct 26 | Connect & sync | Meta sign-in + account selection; seed sandbox (campaigns/ad sets; ads/creatives if supported); backfill + scheduled jobs on Modal; refresh button |
+| Oct 19 | Foundation (done) | Repo + Supabase + auth; migrations from §7; data-source interface; synthetic generator v1; Meta access via system user; collect public ads from one brand |
+| Oct 26 | Connect & sync | `MetaLiveSource`; Facebook Login for Business + account selection with long-lived token in Supabase Vault; sync jobs on Modal (backfill, 4-hourly, nightly re-pull, refresh button); seed script writing the synthetic account into a workspace |
 | Nov 2 | Breakdown | Media download/storage; scene detection; transcripts; vision tagging (video + static) |
 | Nov 9 | Library | Taxonomy settings + custom tags; creative library + ad detail with scene timeline; start labeled eval set |
 | Nov 16 | Analysis | Tag performance with shrinkage; static vs video; trends; outliers; embeddings + clusters + diversity score; submit Business Verification/App Review |
 | Nov 23 (light) | Strategist | Strategist report + brief generator with grounding validator; Langfuse tracing |
-| Nov 30 | Ship | Eval suite in CI + dashboard; demo workspace with planted issues; onboarding polish; deploy; demo video |
+| Nov 30 | Ship | Eval suite in CI + dashboard; demo workspace with planted issues; swap real-brand ads before anything public; onboarding polish; deploy; demo video |
 
 ### Rules
 - New ideas → V1.1 backlog, never the current week.

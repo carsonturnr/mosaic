@@ -30,3 +30,6 @@ evals/results/
 .idea/
 .vscode/
 *.log
+
+# local creative media (stored in Supabase Storage, never committed)
+media/
