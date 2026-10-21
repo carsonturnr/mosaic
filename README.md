@@ -2,7 +2,7 @@
 
 **An AI creative strategist for Meta ads.** Connect an ad account and Mosaic imports every ad, breaks each creative down scene by scene with vision models, ties the tags to performance, and turns that into guidance: what's working, what to double down on, what to cut, and briefs for the next tests. Every claim cites the ads and numbers behind it.
 
-Built as a solo applied-AI project. The target is a deployed, demo-ready MVP by December 2026. Status and the week-by-week plan live in [docs/BUILD_BOARD.md](docs/BUILD_BOARD.md).
+Built as a solo applied-AI project. The target is a deployed, demo-ready MVP by December 2026. Current status is tracked in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §2.
 
 [![CI](https://github.com/carsonturnr/mosaic/actions/workflows/ci.yml/badge.svg)](https://github.com/carsonturnr/mosaic/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -36,7 +36,7 @@ web/        React app: marketing site, auth, creative library, dashboards
 worker/     Python package `mosaic`: data sources, sync, perception, analytics, agents
 supabase/   migrations and seed SQL
 evals/      labeled sets, eval runners, planted-pattern answer key
-docs/       MVP spec, build board, decision history
+docs/       MVP spec
 scripts/    seeding and one-off tools
 ```
 
@@ -67,8 +67,11 @@ The synthetic data generator plants known patterns (a winning hook type, fatigui
 ## Documents
 
 - [docs/MOSAIC_MVP.md](docs/MOSAIC_MVP.md): product spec and success criteria
-- [docs/BUILD_BOARD.md](docs/BUILD_BOARD.md): live plan with checkboxes
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): architecture brief and conventions used while building
+
+## Contributing and security
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
 
 ## License
 
