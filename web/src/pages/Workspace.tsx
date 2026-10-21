@@ -97,7 +97,7 @@ export function Workspace() {
   return (
     <main className="mx-auto max-w-3xl p-6">
       <header className="mb-6">
-        <Link to="/" className="text-sm text-neutral-600 underline">
+        <Link to="/app" className="text-sm text-neutral-600 underline">
           ← Workspaces
         </Link>
         <h1 className="mt-2 text-xl font-semibold">{workspace?.name ?? '…'}</h1>

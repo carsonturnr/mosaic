@@ -54,7 +54,7 @@ export function Workspaces() {
         <ul className="mb-6 divide-y divide-neutral-200 rounded border border-neutral-200">
           {workspaces.map((w) => (
             <li key={w.id} className="flex items-center justify-between px-4 py-3">
-              <Link to={`/w/${w.id}`} className="underline">
+              <Link to={`/app/w/${w.id}`} className="underline">
                 {w.name}
               </Link>
               {w.is_demo && <span className="text-xs text-neutral-500">demo</span>}

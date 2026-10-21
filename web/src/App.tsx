@@ -1,7 +1,10 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { RequireAuth } from './components/RequireAuth'
 import { AuthProvider } from './lib/auth'
+import { Landing } from './pages/Landing'
+import { Privacy } from './pages/Privacy'
 import { SignIn } from './pages/SignIn'
+import { Terms } from './pages/Terms'
 import { Workspace } from './pages/Workspace'
 import { Workspaces } from './pages/Workspaces'
 
@@ -10,10 +13,13 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
           <Route path="/sign-in" element={<SignIn />} />
           <Route element={<RequireAuth />}>
-            <Route path="/" element={<Workspaces />} />
-            <Route path="/w/:id" element={<Workspace />} />
+            <Route path="/app" element={<Workspaces />} />
+            <Route path="/app/w/:id" element={<Workspace />} />
           </Route>
         </Routes>
       </BrowserRouter>

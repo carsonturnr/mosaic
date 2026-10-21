@@ -9,7 +9,7 @@ export function SignIn() {
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   const [error, setError] = useState<string | null>(null)
 
-  if (session) return <Navigate to="/" replace />
+  if (session) return <Navigate to="/app" replace />
 
   const sendMagicLink = async (e: FormEvent) => {
     e.preventDefault()
