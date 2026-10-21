@@ -97,3 +97,47 @@ def for_all_sources(store: Store, settings: Settings, job: str) -> list[dict[str
         except Exception as exc:
             results.append({"data_source_id": ds["id"], "status": "failed", "error": str(exc)})
     return results
+
+
+def build_llm(settings: Settings) -> Any:
+    """The production LLM: Gemini provider, disk cache, Langfuse tracing when configured."""
+    import os
+    from pathlib import Path
+
+    from mosaic.llm import LLM, DiskCache, LangfuseTracer, NullTracer
+    from mosaic.providers import GeminiProvider
+
+    if not settings.gemini_api_key:
+        raise RuntimeError("GEMINI_API_KEY is not set")
+    tracer = LangfuseTracer() if os.environ.get("LANGFUSE_SECRET_KEY") else NullTracer()
+    cache_dir = Path(os.environ.get("MOSAIC_CACHE_DIR", "/tmp/mosaic-llm-cache"))
+    return LLM(GeminiProvider(settings.gemini_api_key), cache=DiskCache(cache_dir), tracer=tracer)
+
+
+def perceive(store: Store, settings: Settings, ds: Row, storage: Any, limit: int = 50) -> Row:
+    """Ingest media for new creatives, then tag every pending creative."""
+    import tempfile
+    from pathlib import Path
+
+    from pydantic import BaseModel
+
+    from mosaic.media import ingest_pending
+    from mosaic.perception.pipeline import perceive_pending
+
+    class PerceiveStats(BaseModel):
+        ingested: int
+        done: int
+        failed: int
+
+    src = build_source(ds, settings, store)
+    llm = build_llm(settings)
+
+    def run() -> PerceiveStats:
+        with tempfile.TemporaryDirectory() as tmp:
+            if hasattr(src, "media_dir"):
+                src.media_dir = Path(tmp)  # type: ignore[attr-defined]
+            ingested = ingest_pending(src, store, storage, ds["workspace_id"], Path(tmp))
+        counts = perceive_pending(llm, store, storage, ds["workspace_id"], limit=limit)
+        return PerceiveStats(ingested=len(ingested), **counts)
+
+    return run_job(store, ds["id"], "perceive", run)
