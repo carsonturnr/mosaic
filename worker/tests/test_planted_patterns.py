@@ -1,4 +1,4 @@
-"""Each planted pattern must be recoverable from the generated metrics (docs/ARCHITECTURE.md §12)."""
+"""Each planted pattern must be recoverable from the metrics (docs/ARCHITECTURE.md §12)."""
 
 from __future__ import annotations
 
