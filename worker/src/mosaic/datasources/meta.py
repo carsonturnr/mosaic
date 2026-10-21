@@ -1,8 +1,9 @@
 """MetaLiveSource — Marketing API (Graph API v26.0) implementation of DataSource.
 
-Field names below were chosen from Meta's Insights reference. Hook-rate inputs come
-from `actions` (`video_view` = 3-second video views); thruplays and quartiles have
-their own fields. Verify live against the sandbox when API access is restored.
+Field names were verified against the live sandbox on Oct 21, 2026 (see
+tests/test_meta_live.py). Hook-rate inputs come from `actions` (`video_view` = 3-second
+video views); thruplays and quartiles have their own fields. The sandbox never delivers,
+so the insight *value* mapping is covered by recorded-response tests only.
 """
 
 from __future__ import annotations
