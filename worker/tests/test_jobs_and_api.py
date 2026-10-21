@@ -129,3 +129,19 @@ def test_meta_connect_exchanges_token_stores_it_and_backfills(monkeypatch: Any) 
     )
     assert len(store.tables["data_sources"]) == 1
     assert read_token(store, ds["token_secret_id"]) == "LONG"
+
+
+def test_dotenv_lookup_walks_up_and_tolerates_absence(tmp_path: Any) -> None:
+    """Modal puts the package at /root/mosaic with no .env; a fixed parents[3]
+    lookup raised IndexError there and crashed every deployed function."""
+    from pathlib import Path
+
+    from mosaic.config import _find_dotenv
+
+    # shallow path like the Modal image: must return None, not raise
+    assert _find_dotenv(Path("/mosaic/config.py")) is None
+    deep = tmp_path / "a" / "b" / "mosaic" / "config.py"
+    deep.parent.mkdir(parents=True)
+    assert _find_dotenv(deep) is None
+    (tmp_path / "a" / ".env").write_text("X=1\n")
+    assert _find_dotenv(deep) == tmp_path / "a" / ".env"

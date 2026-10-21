@@ -8,8 +8,19 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-load_dotenv(_REPO_ROOT / ".env")
+
+def _find_dotenv(start: Path | None = None) -> Path | None:
+    """Nearest .env walking up from `start` (default: this file). None in deployed
+    images (Modal), where configuration comes from injected secrets instead."""
+    for parent in (start or Path(__file__)).resolve().parents:
+        candidate = parent / ".env"
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+if (_dotenv := _find_dotenv()) is not None:
+    load_dotenv(_dotenv)
 
 
 def _require(name: str) -> str:
