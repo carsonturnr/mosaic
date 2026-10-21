@@ -69,7 +69,7 @@ The synthetic data generator plants known patterns (a winning hook type, fatigui
 ## Documents
 
 - [docs/MOSAIC_MVP.md](docs/MOSAIC_MVP.md): product spec and success criteria
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): architecture brief and conventions used while building
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): architecture, data model, analytics and conventions
 
 ## Contributing and security
 

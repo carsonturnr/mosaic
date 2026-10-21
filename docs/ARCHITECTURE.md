@@ -1,8 +1,6 @@
-# Mosaic — Project Brief
+# Mosaic — Architecture
 
-> Repo root file. Source of truth for Mosaic scope and architecture.
->
-> **Related docs:** `docs/MOSAIC_MVP.md` (full MVP spec, public). The live week-by-week plan (`BUILD_BOARD.md`) and decision history (`PROJECT_HISTORY.md`) live in the private planning repo checked out at `../planning/`. After completing work, update `../planning/BUILD_BOARD.md` and §2 below.
+> Scope, architecture, data model, analytics and conventions. The product spec is in [MOSAIC_MVP.md](MOSAIC_MVP.md).
 
 ## 1. What we're building
 
@@ -27,7 +25,7 @@
 
 - Meta developer app **"Mosaic"** created (App ID `4146949778771922`), in Development mode, with the **Create & manage ads with Marketing API** use case. `ads_read`, `ads_management`, `business_management`, `pages_show_list`, `pages_read_engagement` show "Ready for testing".
 - Sandbox ad account created: **`act_1129851222828729`** ("Mosaic Dev", USD, America/Chicago), associated with the "Mosaic Dev" Facebook page.
-- **Meta access is working (Oct 19).** The app is connected to a separate business portfolio, **Mosaic Ads** (`1650747423354771`), A system user **`mosaic-sync`** (Admin) has the Mosaic app (full access) and the sandbox ad account granted to it. Its non-expiring token (ads_read, ads_management, business_management) lives in `.env` as `META_ACCESS_TOKEN` and successfully reads `act_1129851222828729`.
+- **Meta access is working (Oct 19).** The app is connected to a separate business portfolio, **Mosaic Ads** (`1650747423354771`). A system user **`mosaic-sync`** (Admin) has the Mosaic app (full access) and the sandbox ad account granted to it. Its non-expiring token (ads_read, ads_management, business_management) lives in `.env` as `META_ACCESS_TOKEN` and successfully reads `act_1129851222828729`.
 - Personal user tokens do NOT work for the sandbox account; always use the system user token for API calls.
 - Business verification is not done yet; it is only needed for App Review (week 5).
 - **Sandbox limits (tested):** campaigns, ad sets and image uploads work; ads and ad creatives cannot be created while the app is in Development mode. Ads, creatives and all KPIs therefore come from the synthetic layer (`SandboxSyntheticSource`). Switching the app to Live needs a Privacy Policy URL — optional.
@@ -423,7 +421,7 @@ MODAL_TOKEN_SECRET=
 
 ---
 
-## 14. Build order (~15 h/week; Mosaic MVP done Dec 6 — full checklist in ../planning/BUILD_BOARD.md)
+## 14. Build order (~15 h/week; MVP done Dec 6)
 
 | Week of | Focus | Tasks |
 | --- | --- | --- |
