@@ -1,27 +1,23 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/useAuth'
 import type { Workspace } from '../lib/types'
 import { supabase } from '../lib/supabase'
+import { useAsync } from '../lib/useAsync'
 
 export function Workspaces() {
   const { session, signOut } = useAuth()
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([])
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
-
-  const load = async () => {
+  const list = useAsync(async () => {
     const { data, error: err } = await supabase
       .from('workspaces')
       .select('*')
       .order('created_at', { ascending: true })
-    if (err) setError(err.message)
-    else setWorkspaces(data)
-  }
-
-  useEffect(() => {
-    void load()
+    if (err) throw new Error(err.message)
+    return data as Workspace[]
   }, [])
+  const workspaces = list.data ?? []
 
   const create = async (e: FormEvent) => {
     e.preventDefault()
@@ -34,7 +30,7 @@ export function Workspaces() {
       return
     }
     setName('')
-    await load()
+    list.reload()
   }
 
   return (
@@ -76,7 +72,7 @@ export function Workspaces() {
         </button>
       </form>
 
-      {error && <p className="mt-4 text-sm text-red-700">{error}</p>}
+      {(error ?? list.error) && <p className="mt-4 text-sm text-red-700">{error ?? list.error}</p>}
     </main>
   )
 }

@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useState } from 'react'
+import { useParams } from 'react-router-dom'
+import { WorkspaceNav } from '../components/WorkspaceNav'
 import { workerApi, type MetaAdAccount } from '../lib/api'
 import { loginWithFacebook } from '../lib/meta'
 import { supabase } from '../lib/supabase'
 import type { DataSource, SyncRun, Workspace as WorkspaceRow } from '../lib/types'
+import { useAsync } from '../lib/useAsync'
 
 interface Counts {
   campaigns: number
@@ -11,19 +13,22 @@ interface Counts {
   creatives: number
 }
 
+interface Overview {
+  workspace: WorkspaceRow
+  sources: DataSource[]
+  runs: SyncRun[]
+  counts: Counts
+}
+
 export function Workspace() {
   const { id } = useParams<{ id: string }>()
-  const [workspace, setWorkspace] = useState<WorkspaceRow | null>(null)
-  const [sources, setSources] = useState<DataSource[]>([])
-  const [runs, setRuns] = useState<SyncRun[]>([])
-  const [counts, setCounts] = useState<Counts | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [fbToken, setFbToken] = useState<string | null>(null)
   const [adAccounts, setAdAccounts] = useState<MetaAdAccount[]>([])
 
-  const load = useCallback(async () => {
-    if (!id) return
+  const overview = useAsync(async (): Promise<Overview | undefined> => {
+    if (!id) return undefined
     const [ws, ds, cCamp, cAds, cCr] = await Promise.all([
       supabase.from('workspaces').select('*').eq('id', id).single(),
       supabase.from('data_sources').select('*').eq('workspace_id', id),
@@ -31,33 +36,32 @@ export function Workspace() {
       supabase.from('ads').select('id', { count: 'exact', head: true }).eq('workspace_id', id),
       supabase.from('creatives').select('id', { count: 'exact', head: true }).eq('workspace_id', id),
     ])
-    if (ws.error) {
-      setError(ws.error.message)
-      return
-    }
-    setWorkspace(ws.data)
-    const dsRows = ds.data ?? []
-    setSources(dsRows)
-    setCounts({ campaigns: cCamp.count ?? 0, ads: cAds.count ?? 0, creatives: cCr.count ?? 0 })
-    if (dsRows.length > 0) {
+    if (ws.error) throw new Error(ws.error.message)
+    const sources = (ds.data ?? []) as DataSource[]
+    let runs: SyncRun[] = []
+    if (sources.length > 0) {
       const r = await supabase
         .from('sync_runs')
         .select('*')
         .in(
           'data_source_id',
-          dsRows.map((d) => d.id),
+          sources.map((d) => d.id),
         )
         .order('started_at', { ascending: false })
         .limit(10)
-      setRuns(r.data ?? [])
-    } else {
-      setRuns([])
+      runs = (r.data ?? []) as SyncRun[]
+    }
+    return {
+      workspace: ws.data as WorkspaceRow,
+      sources,
+      runs,
+      counts: { campaigns: cCamp.count ?? 0, ads: cAds.count ?? 0, creatives: cCr.count ?? 0 },
     }
   }, [id])
-
-  useEffect(() => {
-    void load()
-  }, [load])
+  const workspace = overview.data?.workspace ?? null
+  const sources = overview.data?.sources ?? []
+  const runs = overview.data?.runs ?? []
+  const counts = overview.data?.counts ?? null
 
   const run = async (label: string, fn: () => Promise<void>) => {
     setBusy(label)
@@ -68,7 +72,7 @@ export function Workspace() {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
       setBusy(null)
-      await load()
+      overview.reload()
     }
   }
 
@@ -96,12 +100,7 @@ export function Workspace() {
 
   return (
     <main className="mx-auto max-w-3xl p-6">
-      <header className="mb-6">
-        <Link to="/app" className="text-sm text-neutral-600 underline">
-          ← Workspaces
-        </Link>
-        <h1 className="mt-2 text-xl font-semibold">{workspace?.name ?? '…'}</h1>
-      </header>
+      <WorkspaceNav id={id} name={workspace?.name} />
 
       {counts && (
         <dl className="mb-6 grid grid-cols-3 gap-3 text-sm">
@@ -200,7 +199,7 @@ export function Workspace() {
         )}
       </section>
 
-      {error && <p className="mt-4 text-sm text-red-700">{error}</p>}
+      {(error ?? overview.error) && <p className="mt-4 text-sm text-red-700">{error ?? overview.error}</p>}
     </main>
   )
 }
