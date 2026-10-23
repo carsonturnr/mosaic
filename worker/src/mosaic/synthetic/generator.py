@@ -16,6 +16,7 @@ the requested date range, so backfills and incremental syncs agree.
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import math
 import random
@@ -68,6 +69,8 @@ PROOF_TYPES = [
     "press",
 ]
 CTAS = ["shop now", "shop now", "learn more", "get offer", "sign up"]
+
+MIN_WINNERS = 3
 
 PatternKind = Literal[
     "winning_hook", "fatigue", "near_duplicate", "static_vs_video", "hidden_winner"
@@ -261,6 +264,21 @@ class SyntheticAccount:
                 hook_mult=hook_mult,
                 fatigue=fatigue,
             )
+
+        # The winning hook must actually be planted: make sure at least MIN_WINNERS
+        # ordinary video ads carry it (seeds that already have enough are unchanged).
+        special = fatigue_idx | {hidden_idx} | {i for pair in dup_pairs for i in pair}
+        carriers = [i for i in video_idx if drafts[i].tags.get("hook_type") == self.winning_hook]
+        for i in [i for i in video_idx if i not in special and i not in carriers]:
+            if len(carriers) >= MIN_WINNERS:
+                break
+            d = drafts[i]
+            tags = {**d.tags, "hook_type": self.winning_hook}
+            ad = d.ad.model_copy(
+                update={"name": f"{tags['format']} | {self.winning_hook} | {i:03d}"}
+            )
+            drafts[i] = dataclasses.replace(d, tags=tags, ad=ad)
+            carriers.append(i)
 
         ads = [drafts[i] for i in range(n)]
         patterns = self._describe_patterns(ads, fatigue_idx, hidden_idx, dup_pairs, static_idx)

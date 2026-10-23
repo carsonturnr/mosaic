@@ -128,3 +128,11 @@ def test_metrics_independent_of_window(account: SyntheticAccount) -> None:
     }
     for r in account.daily_metrics(ids, mid, mid + timedelta(days=3)):
         assert full[(r.ad_external_id, r.date)] == r
+
+
+@pytest.mark.parametrize("seed", [1, 5, 7, 42, 99, 123, 2024])
+def test_winning_hook_is_always_planted(seed: int) -> None:
+    acc = SyntheticAccount(seed=seed)
+    carriers = [s for s in acc.ads if s.tags.get("hook_type") == acc.winning_hook]
+    assert len(carriers) >= 3
+    assert all(acc.winning_hook in s.ad.name for s in carriers)
