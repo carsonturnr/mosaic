@@ -23,7 +23,7 @@ export function WaitlistForm({ product, source, align = 'left' }: {
   if (status === 'done' || status === 'exists') {
     return (
       <p className={`flex items-center gap-2 text-sm text-[var(--site-text)] ${align === 'center' ? 'justify-center' : ''}`} role="status">
-        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400" aria-hidden>✓</span>
+        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--v4)]/15 text-[var(--v5)]" aria-hidden>✓</span>
         {status === 'done' ? "You're on the list. We'll email you when it's ready." : "You're already on the list."}
       </p>
     )

@@ -4,10 +4,10 @@ import { REPO, SitePage } from '../components/SiteFrame'
 import { WaitlistForm } from '../components/WaitlistForm'
 
 const STEPS = [
-  { n: '01', title: 'Connect', body: 'Sign in with Meta and pick an ad account. Mosaic imports 90 days of ads, creatives and daily results, then keeps them current.' },
-  { n: '02', title: 'Perceive', body: 'Every video and static is broken down by vision models into scenes, hooks and tags that follow your taxonomy.' },
-  { n: '03', title: 'Analyze', body: 'Tags are tied to spend and results with honest statistics: shrinkage, confidence intervals, outliers and concept clusters.' },
-  { n: '04', title: 'Explain', body: 'A strategist agent writes what to scale, what to cut and what to make next, citing the ads and numbers for every claim.' },
+  { n: '01', title: 'Connect', body: 'Link your Meta ad account. Read-only.' },
+  { n: '02', title: 'Perceive', body: 'Every ad is broken into scenes, hooks and tags.' },
+  { n: '03', title: 'Analyze', body: 'Tags are tied to results with honest stats.' },
+  { n: '04', title: 'Explain', body: 'Scale, cut and make next, with citations.' },
 ]
 
 const STACK = ['Gemini', 'Claude', 'Postgres', 'pgvector', 'Supabase', 'Modal', 'React', 'TypeScript', 'Python']
@@ -19,7 +19,7 @@ export function Landing() {
         {/* ---------------------------------------------------------------- hero */}
         <section className="relative overflow-hidden">
           <div className="site-grid-bg pointer-events-none absolute inset-0" aria-hidden />
-          <div className="pointer-events-none absolute left-1/2 top-[-280px] h-[560px] w-[900px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(124_108_255/0.22),transparent)]" aria-hidden />
+          <div className="pointer-events-none absolute left-1/2 top-[-280px] h-[560px] w-[900px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(144_133_233/0.2),transparent)]" aria-hidden />
           <div className="relative mx-auto max-w-6xl px-5 pb-10 pt-20 text-center sm:pt-28">
             <a href={REPO} className="rise inline-flex items-center gap-2 rounded-full border border-[var(--site-line)] bg-white/[0.03] py-1 pl-1 pr-3 text-xs text-[var(--site-muted)] transition hover:border-white/20 hover:text-[var(--site-text)]">
               <span className="rounded-full bg-white/[0.08] px-2 py-0.5 font-medium text-[var(--site-text)]">Open source</span>
@@ -32,16 +32,15 @@ export function Landing() {
               <span className="accent-text pr-2 font-serif font-normal italic tracking-[-0.01em]">and why.</span>
             </h1>
             <p className="rise rise-2 mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[var(--site-muted)]">
-              Mosaic is an AI creative strategist for Meta ads. It breaks every creative down scene by scene, ties what it sees
-              to performance, and tells you what to make next, with the receipts.
+              An AI creative strategist for Meta ads. See what's working, and what to make next.
             </p>
             <div id="waitlist" className="rise rise-3 mt-9 scroll-mt-24">
               <WaitlistForm product="mosaic" source="landing-hero" align="center" />
             </div>
             <ul className="rise rise-3 mt-5 flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs text-[var(--site-muted)]">
-              {['Read-only access to your ad account', 'Every claim cited', 'Free during early access'].map((t) => (
+              {['Read-only', 'Every claim cited', 'Free in early access'].map((t) => (
                 <li key={t} className="flex items-center gap-1.5">
-                  <span className="text-emerald-400" aria-hidden>✓</span>
+                  <span className="text-[var(--v5)]" aria-hidden>✓</span>
                   {t}
                 </li>
               ))}
@@ -56,11 +55,11 @@ export function Landing() {
         {/* ------------------------------------------------------- how it works */}
         <section id="how" className="scroll-mt-16 border-t border-[var(--site-line)]">
           <div className="mx-auto max-w-6xl px-5 py-24">
-            <SectionHead eyebrow="How it works" title="From ad account to answer" body="One pipeline: sync, perceive, analyze, explain. Each step writes structured data, so every answer traces back to a source." />
+            <SectionHead eyebrow="How it works" title="From ad account to answer" body="Four steps. Every answer traces back to its source." />
             <ol className="mt-14 grid gap-px overflow-hidden rounded-2xl border border-[var(--site-line)] bg-[var(--site-line)] sm:grid-cols-2 lg:grid-cols-4">
               {STEPS.map((s) => (
                 <li key={s.n} className="bg-[var(--site-bg)] p-6">
-                  <p className="font-mono text-xs text-[#b3a8ff]">{s.n}</p>
+                  <p className="font-mono text-xs text-[var(--v5)]">{s.n}</p>
                   <h3 className="mt-6 text-base font-medium">{s.title}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-[var(--site-muted)]">{s.body}</p>
                 </li>
@@ -72,7 +71,7 @@ export function Landing() {
         {/* ------------------------------------------------------------ features */}
         <section className="border-t border-[var(--site-line)]">
           <div className="mx-auto max-w-6xl px-5 py-24">
-            <SectionHead eyebrow="Features" title="A strategist's whole job, in one place" body="The work a senior creative strategist does each week, done on every ad, every sync." />
+            <SectionHead eyebrow="Features" title="A strategist's whole job" body="Done on every ad, every sync." />
             <div className="mt-14">
               <Bento />
             </div>
@@ -89,13 +88,12 @@ export function Landing() {
                 <span className="font-serif font-normal italic text-[var(--site-muted)]">before you see it.</span>
               </h2>
               <p className="mt-5 max-w-md text-base leading-relaxed text-[var(--site-muted)]">
-                Reports are structured claims, not prose. Before one is saved, a validator confirms every cited ad exists in your
-                account and every metric matches the database. If anything is off, the report is regenerated or flagged.
+                Each claim cites ads and numbers. A validator checks them against your data before the report is saved.
               </p>
               <ul className="mt-8 space-y-3 text-sm text-[#c9ccd1]">
-                {['Claims cite ad IDs and exact metric values', 'Mismatches regenerate once, then surface a warning', 'Tagging accuracy and grounding are scored in CI on every change'].map((t) => (
+                {['Mismatches are regenerated or flagged', 'Accuracy is scored in CI on every change'].map((t) => (
                   <li key={t} className="flex gap-3">
-                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#9085e9]" aria-hidden />
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--v4)]" aria-hidden />
                     {t}
                   </li>
                 ))}
@@ -110,7 +108,7 @@ export function Landing() {
           <div className="mx-auto max-w-6xl px-5 py-20 text-center">
             <p className="font-mono text-xs uppercase tracking-[0.14em] text-[var(--site-muted)]">Built in the open</p>
             <p className="mx-auto mt-4 max-w-xl text-lg text-[#c9ccd1]">
-              The pipeline, the statistics and the evals are all open source. Mosaic only ever reads from your ad account.
+              Pipeline, statistics and evals, all open source.
             </p>
             <ul className="mx-auto mt-8 flex max-w-3xl flex-wrap justify-center gap-2">
               {STACK.map((s) => (
@@ -126,14 +124,14 @@ export function Landing() {
 
         {/* --------------------------------------------------------------- CTA */}
         <section className="relative overflow-hidden border-t border-[var(--site-line)]">
-          <div className="pointer-events-none absolute bottom-[-320px] left-1/2 h-[560px] w-[900px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(57_135_229/0.2),transparent)]" aria-hidden />
+          <div className="pointer-events-none absolute bottom-[-320px] left-1/2 h-[560px] w-[900px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(144_133_233/0.16),transparent)]" aria-hidden />
           <div className="relative mx-auto max-w-6xl px-5 py-28 text-center">
             <h2 className="mx-auto max-w-3xl text-4xl font-semibold leading-tight tracking-[-0.03em] sm:text-6xl">
               Stop guessing
               <br />
               <span className="accent-text pr-2 font-serif font-normal italic">what to make next.</span>
             </h2>
-            <p className="mx-auto mt-5 max-w-lg text-[var(--site-muted)]">Early access is free while Mosaic is being built. Join the list and we'll reach out when your account can connect.</p>
+            <p className="mx-auto mt-5 max-w-lg text-[var(--site-muted)]">Free during early access.</p>
             <div className="mt-9">
               <WaitlistForm product="mosaic" source="landing-footer" align="center" />
             </div>
@@ -155,9 +153,9 @@ function SectionHead({ eyebrow, title, body }: { eyebrow: string; title: string;
 }
 
 function CodePanel() {
-  const k = 'text-[#b3a8ff]'
-  const s = 'text-[#6ee7c8]'
-  const n = 'text-[#ffb27a]'
+  const k = 'text-[var(--v5)]'
+  const s = 'text-[var(--v6)]'
+  const n = 'text-[var(--site-text)]'
   const m = 'text-[var(--site-muted)]'
   return (
     <div className="overflow-hidden rounded-2xl border border-[var(--site-line)] bg-[var(--site-card)]">
@@ -176,10 +174,10 @@ function CodePanel() {
         {'  }\n}'}
       </pre>
       <div className="border-t border-[var(--site-line)] bg-black/25 px-5 py-4 font-mono text-[12px] leading-6">
-        <p><span className="text-emerald-400">✓</span> <span className={m}>ad</span> syn_ad_000 <span className={m}>exists in workspace</span></p>
-        <p><span className="text-emerald-400">✓</span> <span className={m}>roas</span> 0.65 <span className={m}>= db 0.6514 (rounded)</span></p>
-        <p><span className="text-emerald-400">✓</span> <span className={m}>spend</span> 4728.81 <span className={m}>= db 4728.81</span></p>
-        <p className="mt-1 text-emerald-300">grounding_passed: true</p>
+        <p><span className="text-[var(--v5)]">✓</span> <span className={m}>ad</span> syn_ad_000 <span className={m}>exists in workspace</span></p>
+        <p><span className="text-[var(--v5)]">✓</span> <span className={m}>roas</span> 0.65 <span className={m}>= db 0.6514 (rounded)</span></p>
+        <p><span className="text-[var(--v5)]">✓</span> <span className={m}>spend</span> 4728.81 <span className={m}>= db 4728.81</span></p>
+        <p className="mt-1 text-[var(--v5)]">grounding_passed: true</p>
       </div>
     </div>
   )

@@ -37,21 +37,21 @@ function SceneTimeline() {
         {SCENES.map((s, i) => (
           <div key={i} style={{ flexGrow: s.w }} className="min-w-0 basis-0">
             <div
-              className={`h-24 rounded-md border sm:h-32 ${s.hook ? 'border-[#9085e9]/60' : 'border-white/[0.06]'}`}
-              style={{ background: `linear-gradient(160deg, hsl(${250 - i * 28} 40% 22%), hsl(${250 - i * 28} 55% 38%))` }}
+              className={`h-24 rounded-md border sm:h-32 ${s.hook ? 'border-[var(--v5)]' : 'border-white/[0.06]'}`}
+              style={{ background: `linear-gradient(160deg, var(--v1), ${['var(--v4)', 'var(--v3)', 'var(--v2)', 'var(--v3)', 'var(--v2)'][i]})` }}
             />
           </div>
         ))}
       </div>
       <div className="flex h-1.5 overflow-hidden rounded-full" aria-hidden>
         {SCENES.map((s, i) => (
-          <div key={i} style={{ width: `${(s.w / total) * 100}%` }} className={`${s.hook ? 'bg-[#9085e9]' : 'bg-white/15'} ${i ? 'ml-0.5' : ''}`} />
+          <div key={i} style={{ width: `${(s.w / total) * 100}%` }} className={`${s.hook ? 'bg-[var(--v5)]' : 'bg-white/15'} ${i ? 'ml-0.5' : ''}`} />
         ))}
       </div>
       <ul className="space-y-1.5 font-mono text-[11px]">
         {SCENES.slice(0, 3).map((s, i) => (
           <li key={i} className="flex gap-3">
-            <span className={s.hook ? 'text-[#b3a8ff]' : 'text-[var(--site-muted)]'}>{s.hook ? 'HOOK 0–3s' : `SCENE ${i + 1}`}</span>
+            <span className={s.hook ? 'text-[var(--v5)]' : 'text-[var(--site-muted)]'}>{s.hook ? 'HOOK 0–3s' : `SCENE ${i + 1}`}</span>
             <span className="truncate text-[#c9ccd1]">{s.line}</span>
           </li>
         ))}
@@ -80,8 +80,8 @@ function Rankings() {
           </div>
           <div className="relative h-4">
             <div className="absolute inset-x-0 top-1/2 h-px bg-white/[0.08]" />
-            <div className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-[#3987e5]/35" style={{ left: pct(r.lo), width: `calc(${pct(r.hi)} - ${pct(r.lo)})` }} />
-            <div className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[var(--site-card)] bg-[#3987e5]" style={{ left: pct(r.est) }} />
+            <div className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-[var(--v4)]/30" style={{ left: pct(r.lo), width: `calc(${pct(r.hi)} - ${pct(r.lo)})` }} />
+            <div className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[var(--site-card)] bg-[var(--v5)]" style={{ left: pct(r.est) }} />
           </div>
         </div>
       ))}
@@ -91,7 +91,7 @@ function Rankings() {
 
 // 22 ads, 4 concepts
 const CLUSTERS = [9, 6, 4, 3]
-const CLUSTER_VARS = ['var(--cluster-1)', 'var(--cluster-2)', 'var(--cluster-3)', 'var(--cluster-4)']
+const CLUSTER_VARS = ['var(--v5)', 'var(--v4)', 'var(--v3)', 'var(--v2)']
 
 function Diversity() {
   return (
@@ -120,9 +120,9 @@ function Citations() {
       <span className="rounded bg-white/[0.06] px-1 font-mono text-[var(--site-text)]">0.65×</span> ROAS on{' '}
       <span className="rounded bg-white/[0.06] px-1 font-mono text-[var(--site-text)]">$4,729</span> spend.
       <div className="mt-3 flex flex-wrap gap-1.5 font-mono text-[10px]">
-        <span className="rounded border border-white/10 px-1.5 py-0.5 text-[#b3a8ff]">ad 000</span>
-        <span className="rounded border border-emerald-400/25 bg-emerald-400/10 px-1.5 py-0.5 text-emerald-300">✓ roas 0.65 matches</span>
-        <span className="rounded border border-emerald-400/25 bg-emerald-400/10 px-1.5 py-0.5 text-emerald-300">✓ spend 4729 matches</span>
+        <span className="rounded border border-white/10 px-1.5 py-0.5 text-[var(--v5)]">ad 000</span>
+        <span className="rounded border border-[var(--v4)]/30 bg-[var(--v4)]/10 px-1.5 py-0.5 text-[var(--v5)]">✓ roas 0.65 matches</span>
+        <span className="rounded border border-[var(--v4)]/30 bg-[var(--v4)]/10 px-1.5 py-0.5 text-[var(--v5)]">✓ spend 4729 matches</span>
       </div>
     </div>
   )
@@ -156,10 +156,10 @@ function Brief() {
   return (
     <pre className="overflow-hidden rounded-xl border border-white/[0.07] bg-black/30 p-4 font-mono text-[11px] leading-relaxed text-[#c9ccd1]">
       <span className="text-[var(--site-muted)]">BRIEF 01 · from ad 012</span>
-      {'\n'}<span className="text-[#b3a8ff]">HOOK</span>   "3 p.m. crash again?"
-      {'\n'}<span className="text-[#b3a8ff]">ANGLE</span>  problem/pain → solution
-      {'\n'}<span className="text-[#b3a8ff]">FORMAT</span> UGC, 20–25 s, selfie
-      {'\n'}<span className="text-[#b3a8ff]">TEST</span>   vs. curiosity hook, $50/day
+      {'\n'}<span className="text-[var(--v5)]">HOOK</span>   "3 p.m. crash again?"
+      {'\n'}<span className="text-[var(--v5)]">ANGLE</span>  problem/pain → solution
+      {'\n'}<span className="text-[var(--v5)]">FORMAT</span> UGC, 20–25 s, selfie
+      {'\n'}<span className="text-[var(--v5)]">TEST</span>   vs. curiosity hook, $50/day
     </pre>
   )
 }
@@ -167,36 +167,36 @@ function Brief() {
 export function Bento() {
   return (
     <div className="grid gap-4 md:grid-cols-6">
-      <Card className="md:col-span-4" eyebrow="Perceive" title="Every ad, broken down scene by scene"
-        body="Vision models split each video into scenes with transcript, on-screen text and B-roll type. The first three seconds are tagged as the hook.">
+      <Card className="md:col-span-4" eyebrow="Perceive" title="Scene-by-scene breakdown"
+        body="Transcript, on-screen text and visuals for every scene. The first 3 seconds are the hook.">
         <SceneTimeline />
       </Card>
-      <Card className="md:col-span-2" eyebrow="Analyze" title="Rankings you can trust"
-        body="Empirical-Bayes shrinkage pulls low-spend ads toward the account average, so a $40 ad never gets crowned the winner.">
+      <Card className="md:col-span-2" eyebrow="Analyze" title="Honest rankings"
+        body="Shrinkage keeps a $40 ad from being crowned the winner.">
         <Rankings />
       </Card>
-      <Card className="md:col-span-2" eyebrow="Cluster" title="Real concept diversity"
-        body="Near-duplicates are grouped into true concepts and weighted by spend.">
+      <Card className="md:col-span-2" eyebrow="Cluster" title="Concept diversity"
+        body="Near-duplicates grouped into real concepts.">
         <Diversity />
       </Card>
-      <Card className="md:col-span-2" eyebrow="Explain" title="Claims with receipts"
-        body="Every recommendation cites the ads and numbers behind it, checked against your data before you see it.">
+      <Card className="md:col-span-2" eyebrow="Explain" title="Cited claims"
+        body="Every recommendation links to its ads and numbers.">
         <Citations />
       </Card>
-      <Card className="md:col-span-2" eyebrow="Your framework" title="Tags in your language"
-        body="Edit the taxonomy to match how you already buy media. Add custom tags and filter by anything.">
+      <Card className="md:col-span-2" eyebrow="Your framework" title="Your taxonomy"
+        body="Tag ads the way you already buy media.">
         <Taxonomy />
       </Card>
       <Card className="md:col-span-6 lg:col-span-6" eyebrow="Act" title="Briefs, not pixels"
-        body="Turn a winning hook into new scripts, hook lists and a test plan your editors can shoot tomorrow.">
+        body="Winning hooks become scripts and a test plan.">
         <div className="grid gap-4 md:grid-cols-2">
           <Brief />
           <pre className="hidden overflow-hidden rounded-xl border border-white/[0.07] bg-black/30 p-4 font-mono text-[11px] leading-relaxed text-[#c9ccd1] md:block">
             <span className="text-[var(--site-muted)]">BRIEF 02 · new angle</span>
-            {'\n'}<span className="text-[#b3a8ff]">HOOK</span>   "I tested 4 energy drinks so you don't have to"
-            {'\n'}<span className="text-[#b3a8ff]">ANGLE</span>  comparison
-            {'\n'}<span className="text-[#b3a8ff]">FORMAT</span> talking head, 30 s
-            {'\n'}<span className="text-[#b3a8ff]">WHY</span>    no comparison ads in 30 days
+            {'\n'}<span className="text-[var(--v5)]">HOOK</span>   "I tested 4 energy drinks so you don't have to"
+            {'\n'}<span className="text-[var(--v5)]">ANGLE</span>  comparison
+            {'\n'}<span className="text-[var(--v5)]">FORMAT</span> talking head, 30 s
+            {'\n'}<span className="text-[var(--v5)]">WHY</span>    no comparison ads in 30 days
           </pre>
         </div>
       </Card>

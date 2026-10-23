@@ -25,10 +25,12 @@
   --site-line: rgb(255 255 255 / 0.08);
   --site-text: #ededef;
   --site-muted: #8a8f98;
-  --cluster-1: #3987e5;
-  --cluster-2: #d95926;
-  --cluster-3: #199e70;
-  --cluster-4: #9085e9;
+  --v1: #2c2552;
+  --v2: #4a3fa0;
+  --v3: #6f62d6;
+  --v4: #9085e9;
+  --v5: #b3a8ff;
+  --v6: #dcd7ff;
   background: var(--site-bg);
   color: var(--site-text);
   color-scheme: dark;
@@ -43,7 +45,7 @@
 }
 
 .accent-text {
-  background: linear-gradient(100deg, #b3a8ff 0%, #7aa7ff 45%, #6ee7c8 100%);
+  background: linear-gradient(100deg, #dcd7ff 0%, #b3a8ff 50%, #9085e9 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
