@@ -84,3 +84,6 @@ jobs:
           for f in supabase/migrations/*.sql supabase/seed.sql; do
             echo "== $f"; psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f "$f"
           done
+          for f in supabase/tests/*.sql; do
+            echo "== test $f"; psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f "$f"
+          done

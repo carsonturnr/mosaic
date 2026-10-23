@@ -38,7 +38,17 @@ def _run(job: str) -> list[dict[str, Any]]:
 
 @app.function(image=image, secrets=secrets, schedule=modal.Period(hours=4), timeout=1800)
 def structure_sync() -> list[dict[str, Any]]:
-    return _run("structure")
+    results = _run("structure")
+    if needs_perception(results):
+        perceive.spawn()  # tag new creatives now instead of waiting for the next tick
+    return results
+
+
+def needs_perception(results: list[dict[str, Any]]) -> bool:
+    return any(
+        r.get("status") == "done" and (r.get("stats") or {}).get("new_creatives", 0) > 0
+        for r in results
+    )
 
 
 @app.function(image=image, secrets=secrets, schedule=modal.Period(hours=4), timeout=1800)

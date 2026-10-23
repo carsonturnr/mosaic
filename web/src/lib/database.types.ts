@@ -861,6 +861,39 @@ export type Database = {
       }
     }
     Functions: {
+      ad_performance: {
+        Args: { p_since?: string; p_until?: string; p_workspace: string }
+        Returns: {
+          active_days: number
+          ad_id: string
+          clicks: number
+          cpa: number
+          cpc: number
+          cpm: number
+          creative_id: string
+          creative_type: Database["public"]["Enums"]["creative_type"]
+          ctr: number
+          duration_s: number
+          external_id: string
+          first_date: string
+          hold_rate: number
+          hook_rate: number
+          impressions: number
+          last_date: string
+          link_clicks: number
+          name: string
+          perception_status: string
+          purchase_value: number
+          purchases: number
+          roas: number
+          spend: number
+          status: string
+          storage_path: string
+          thumbnail_path: string
+          video_3s_views: number
+          video_thruplays: number
+        }[]
+      }
       owns_workspace: { Args: { ws: string }; Returns: boolean }
       vault_read_secret: { Args: { p_id: string }; Returns: string }
       vault_store_secret: {

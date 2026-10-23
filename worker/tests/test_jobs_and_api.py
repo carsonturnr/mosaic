@@ -145,3 +145,12 @@ def test_dotenv_lookup_walks_up_and_tolerates_absence(tmp_path: Any) -> None:
     assert _find_dotenv(deep) is None
     (tmp_path / "a" / ".env").write_text("X=1\n")
     assert _find_dotenv(deep) == tmp_path / "a" / ".env"
+
+
+def test_structure_sync_triggers_perception_only_for_new_creatives() -> None:
+    import modal_app
+
+    assert modal_app.needs_perception([{"status": "done", "stats": {"new_creatives": 2}}])
+    assert not modal_app.needs_perception([{"status": "done", "stats": {"new_creatives": 0}}])
+    assert not modal_app.needs_perception([{"status": "failed", "error": "x"}])
+    assert not modal_app.needs_perception([])
