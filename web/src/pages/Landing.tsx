@@ -1,105 +1,194 @@
-import { SitePage } from '../components/SiteFrame'
+import { Bento } from '../components/landing/Bento'
+import { ProductPreview } from '../components/landing/ProductPreview'
+import { REPO, SitePage } from '../components/SiteFrame'
 import { WaitlistForm } from '../components/WaitlistForm'
 
-const steps = [
-  {
-    title: 'Connect',
-    body: 'Sign in with Meta and pick an ad account. Mosaic imports campaigns, ads, creatives and 90 days of daily results, then keeps them current on a schedule.',
-  },
-  {
-    title: 'Break down',
-    body: 'Every video is split into scenes with a transcript, on-screen text and a visual description. The first three seconds are tagged as the hook. Statics get the same treatment from the image and copy.',
-  },
-  {
-    title: 'Analyze',
-    body: 'Hooks, angles, personas, formats and offers are ranked by the KPI you care about, with confidence levels so a forty-dollar ad never gets crowned the winner.',
-  },
-  {
-    title: 'Act',
-    body: 'A strategist report says what is working, what to double down on, what to cut and which concepts are missing. Every claim links to the ads and numbers behind it.',
-  },
+const STEPS = [
+  { n: '01', title: 'Connect', body: 'Sign in with Meta and pick an ad account. Mosaic imports 90 days of ads, creatives and daily results, then keeps them current.' },
+  { n: '02', title: 'Perceive', body: 'Every video and static is broken down by vision models into scenes, hooks and tags that follow your taxonomy.' },
+  { n: '03', title: 'Analyze', body: 'Tags are tied to spend and results with honest statistics: shrinkage, confidence intervals, outliers and concept clusters.' },
+  { n: '04', title: 'Explain', body: 'A strategist agent writes what to scale, what to cut and what to make next, citing the ads and numbers for every claim.' },
 ]
 
-const features = [
-  ['Scene-level breakdown', 'Transcript, on-screen text, visuals and B-roll type for every scene of every ad.'],
-  ['Hook analysis', 'Hook type, opening visual and first line, tied to hook rate and hold rate.'],
-  ['Your taxonomy', 'Tags follow your media-buying framework. Edit it, add custom tags, filter by anything.'],
-  ['Honest rankings', 'Statistical shrinkage pulls low-spend ads toward the account average before anything is called a winner.'],
-  ['Concept diversity', 'Near-duplicates are clustered into real concepts, so you know whether you have 4 ideas or 22.'],
-  ['Cited reports', 'Reports and briefs quote specific ads and metrics, and every number is checked against the database.'],
-  ['Briefs, not pixels', 'Variations and new angles as scripts, hook lists and written direction. No image generation.'],
-  ['Evals you can see', 'Tagging accuracy, grounding checks and planted-problem detection, published on a dashboard.'],
-]
+const STACK = ['Gemini', 'Claude', 'Postgres', 'pgvector', 'Supabase', 'Modal', 'React', 'TypeScript', 'Python']
 
 export function Landing() {
   return (
     <SitePage>
       <main>
-        <section className="mx-auto max-w-5xl px-6 pt-16 pb-20 sm:pt-24">
-          <p className="text-sm font-medium text-neutral-500">For DTC brands running Meta ads</p>
-          <h1 className="mt-3 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">
-            An in-house creative strategist, for brands that can't afford one.
-          </h1>
-          <p className="mt-5 max-w-2xl text-lg text-neutral-600">
-            Mosaic connects to your ad account, breaks every creative down scene by scene, ties what it sees
-            to performance, and tells you what to make next, with the receipts.
-          </p>
-          <div className="mt-8">
-            <WaitlistForm product="mosaic" source="landing-hero" />
-            <p className="mt-2 text-xs text-neutral-500">Early access is free while we build. No spam.</p>
+        {/* ---------------------------------------------------------------- hero */}
+        <section className="relative overflow-hidden">
+          <div className="site-grid-bg pointer-events-none absolute inset-0" aria-hidden />
+          <div className="pointer-events-none absolute left-1/2 top-[-280px] h-[560px] w-[900px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(124_108_255/0.22),transparent)]" aria-hidden />
+          <div className="relative mx-auto max-w-6xl px-5 pb-10 pt-20 text-center sm:pt-28">
+            <a href={REPO} className="rise inline-flex items-center gap-2 rounded-full border border-[var(--site-line)] bg-white/[0.03] py-1 pl-1 pr-3 text-xs text-[var(--site-muted)] transition hover:border-white/20 hover:text-[var(--site-text)]">
+              <span className="rounded-full bg-white/[0.08] px-2 py-0.5 font-medium text-[var(--site-text)]">Open source</span>
+              Building in public on GitHub
+              <span aria-hidden>→</span>
+            </a>
+            <h1 className="rise rise-1 mx-auto mt-7 max-w-4xl text-[40px] font-semibold leading-[1.02] tracking-[-0.035em] sm:text-7xl">
+              Know which ads win,
+              <br />
+              <span className="accent-text pr-2 font-serif font-normal italic tracking-[-0.01em]">and why.</span>
+            </h1>
+            <p className="rise rise-2 mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[var(--site-muted)]">
+              Mosaic is an AI creative strategist for Meta ads. It breaks every creative down scene by scene, ties what it sees
+              to performance, and tells you what to make next, with the receipts.
+            </p>
+            <div id="waitlist" className="rise rise-3 mt-9 scroll-mt-24">
+              <WaitlistForm product="mosaic" source="landing-hero" align="center" />
+            </div>
+            <ul className="rise rise-3 mt-5 flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs text-[var(--site-muted)]">
+              {['Read-only access to your ad account', 'Every claim cited', 'Free during early access'].map((t) => (
+                <li key={t} className="flex items-center gap-1.5">
+                  <span className="text-emerald-400" aria-hidden>✓</span>
+                  {t}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div id="product" className="rise rise-4 relative mx-auto max-w-6xl scroll-mt-20 px-5 pb-24">
+            <ProductPreview />
           </div>
         </section>
 
-        <section id="how" className="border-t border-neutral-200 bg-neutral-50">
-          <div className="mx-auto max-w-5xl px-6 py-16">
-            <h2 className="text-2xl font-semibold tracking-tight">How it works</h2>
-            <ol className="mt-8 grid gap-8 sm:grid-cols-2">
-              {steps.map((s, i) => (
-                <li key={s.title} className="flex gap-4">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-sm font-medium text-white">
-                    {i + 1}
-                  </span>
-                  <div>
-                    <h3 className="font-medium">{s.title}</h3>
-                    <p className="mt-1 text-sm text-neutral-600">{s.body}</p>
-                  </div>
+        {/* ------------------------------------------------------- how it works */}
+        <section id="how" className="scroll-mt-16 border-t border-[var(--site-line)]">
+          <div className="mx-auto max-w-6xl px-5 py-24">
+            <SectionHead eyebrow="How it works" title="From ad account to answer" body="One pipeline: sync, perceive, analyze, explain. Each step writes structured data, so every answer traces back to a source." />
+            <ol className="mt-14 grid gap-px overflow-hidden rounded-2xl border border-[var(--site-line)] bg-[var(--site-line)] sm:grid-cols-2 lg:grid-cols-4">
+              {STEPS.map((s) => (
+                <li key={s.n} className="bg-[var(--site-bg)] p-6">
+                  <p className="font-mono text-xs text-[#b3a8ff]">{s.n}</p>
+                  <h3 className="mt-6 text-base font-medium">{s.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-[var(--site-muted)]">{s.body}</p>
                 </li>
               ))}
             </ol>
           </div>
         </section>
 
-        <section className="mx-auto max-w-5xl px-6 py-16">
-          <h2 className="text-2xl font-semibold tracking-tight">What you get</h2>
-          <ul className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {features.map(([title, body]) => (
-              <li key={title} className="rounded-lg border border-neutral-200 p-4">
-                <h3 className="text-sm font-medium">{title}</h3>
-                <p className="mt-1 text-sm text-neutral-600">{body}</p>
-              </li>
-            ))}
-          </ul>
+        {/* ------------------------------------------------------------ features */}
+        <section className="border-t border-[var(--site-line)]">
+          <div className="mx-auto max-w-6xl px-5 py-24">
+            <SectionHead eyebrow="Features" title="A strategist's whole job, in one place" body="The work a senior creative strategist does each week, done on every ad, every sync." />
+            <div className="mt-14">
+              <Bento />
+            </div>
+          </div>
         </section>
 
-        <section className="border-t border-neutral-200">
-          <div className="mx-auto max-w-5xl px-6 py-16">
-            <h2 className="text-2xl font-semibold tracking-tight">Built in the open</h2>
-            <p className="mt-3 max-w-2xl text-neutral-600">
-              Mosaic is open source and under active development. The code, the evals and the week-by-week plan
-              are all on GitHub. Reports only ever read from your ad account; nothing is written to it.
+        {/* ------------------------------------------------------------ grounded */}
+        <section id="grounded" className="scroll-mt-16 border-t border-[var(--site-line)]">
+          <div className="mx-auto grid max-w-6xl items-center gap-12 px-5 py-24 lg:grid-cols-[1fr_1.1fr]">
+            <div>
+              <p className="font-mono text-xs uppercase tracking-[0.14em] text-[var(--site-muted)]">Grounding</p>
+              <h2 className="mt-3 text-4xl font-semibold leading-tight tracking-[-0.03em] sm:text-5xl">
+                Every number is checked{' '}
+                <span className="font-serif font-normal italic text-[var(--site-muted)]">before you see it.</span>
+              </h2>
+              <p className="mt-5 max-w-md text-base leading-relaxed text-[var(--site-muted)]">
+                Reports are structured claims, not prose. Before one is saved, a validator confirms every cited ad exists in your
+                account and every metric matches the database. If anything is off, the report is regenerated or flagged.
+              </p>
+              <ul className="mt-8 space-y-3 text-sm text-[#c9ccd1]">
+                {['Claims cite ad IDs and exact metric values', 'Mismatches regenerate once, then surface a warning', 'Tagging accuracy and grounding are scored in CI on every change'].map((t) => (
+                  <li key={t} className="flex gap-3">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#9085e9]" aria-hidden />
+                    {t}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <CodePanel />
+          </div>
+        </section>
+
+        {/* ------------------------------------------------------- open source */}
+        <section className="border-t border-[var(--site-line)]">
+          <div className="mx-auto max-w-6xl px-5 py-20 text-center">
+            <p className="font-mono text-xs uppercase tracking-[0.14em] text-[var(--site-muted)]">Built in the open</p>
+            <p className="mx-auto mt-4 max-w-xl text-lg text-[#c9ccd1]">
+              The pipeline, the statistics and the evals are all open source. Mosaic only ever reads from your ad account.
             </p>
-            <div className="mt-6 flex flex-wrap items-center gap-4">
-              <a
-                href="https://github.com/carsonturnr/mosaic"
-                className="rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium hover:bg-neutral-50"
-              >
-                View on GitHub
-              </a>
-              <WaitlistForm product="mosaic" source="landing-footer" />
+            <ul className="mx-auto mt-8 flex max-w-3xl flex-wrap justify-center gap-2">
+              {STACK.map((s) => (
+                <li key={s} className="rounded-full border border-[var(--site-line)] px-3 py-1 font-mono text-xs text-[var(--site-muted)]">{s}</li>
+              ))}
+            </ul>
+            <a href={REPO} className="mt-8 inline-flex items-center gap-2 rounded-lg border border-[var(--site-line)] bg-white/[0.03] px-4 py-2 text-sm transition hover:border-white/20">
+              <GitHubIcon />
+              View the code on GitHub
+            </a>
+          </div>
+        </section>
+
+        {/* --------------------------------------------------------------- CTA */}
+        <section className="relative overflow-hidden border-t border-[var(--site-line)]">
+          <div className="pointer-events-none absolute bottom-[-320px] left-1/2 h-[560px] w-[900px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(57_135_229/0.2),transparent)]" aria-hidden />
+          <div className="relative mx-auto max-w-6xl px-5 py-28 text-center">
+            <h2 className="mx-auto max-w-3xl text-4xl font-semibold leading-tight tracking-[-0.03em] sm:text-6xl">
+              Stop guessing
+              <br />
+              <span className="accent-text pr-2 font-serif font-normal italic">what to make next.</span>
+            </h2>
+            <p className="mx-auto mt-5 max-w-lg text-[var(--site-muted)]">Early access is free while Mosaic is being built. Join the list and we'll reach out when your account can connect.</p>
+            <div className="mt-9">
+              <WaitlistForm product="mosaic" source="landing-footer" align="center" />
             </div>
           </div>
         </section>
       </main>
     </SitePage>
+  )
+}
+
+function SectionHead({ eyebrow, title, body }: { eyebrow: string; title: string; body: string }) {
+  return (
+    <div className="max-w-2xl">
+      <p className="font-mono text-xs uppercase tracking-[0.14em] text-[var(--site-muted)]">{eyebrow}</p>
+      <h2 className="mt-3 text-4xl font-semibold leading-tight tracking-[-0.03em] sm:text-5xl">{title}</h2>
+      <p className="mt-4 text-base leading-relaxed text-[var(--site-muted)]">{body}</p>
+    </div>
+  )
+}
+
+function CodePanel() {
+  const k = 'text-[#b3a8ff]'
+  const s = 'text-[#6ee7c8]'
+  const n = 'text-[#ffb27a]'
+  const m = 'text-[var(--site-muted)]'
+  return (
+    <div className="overflow-hidden rounded-2xl border border-[var(--site-line)] bg-[var(--site-card)]">
+      <div className="flex items-center gap-1 border-b border-[var(--site-line)] px-3 py-2 font-mono text-[11px]">
+        <span className="rounded-md bg-white/[0.06] px-2 py-1 text-[var(--site-text)]">claim.json</span>
+        <span className="px-2 py-1 text-[var(--site-muted)]">validator.log</span>
+      </div>
+      <pre className="overflow-x-auto p-5 font-mono text-[12.5px] leading-6 text-[#c9ccd1]">
+        {'{\n'}
+        {'  '}<span className={k}>"section"</span>: <span className={s}>"cut"</span>,{'\n'}
+        {'  '}<span className={k}>"claim"</span>: <span className={s}>"Offer-first UGC is losing money."</span>,{'\n'}
+        {'  '}<span className={k}>"ad_ids"</span>: [<span className={s}>"syn_ad_000"</span>],{'\n'}
+        {'  '}<span className={k}>"metrics"</span>: {'{\n'}
+        {'    '}<span className={k}>"roas"</span>: <span className={n}>0.65</span>,{'\n'}
+        {'    '}<span className={k}>"spend"</span>: <span className={n}>4728.81</span>{'\n'}
+        {'  }\n}'}
+      </pre>
+      <div className="border-t border-[var(--site-line)] bg-black/25 px-5 py-4 font-mono text-[12px] leading-6">
+        <p><span className="text-emerald-400">✓</span> <span className={m}>ad</span> syn_ad_000 <span className={m}>exists in workspace</span></p>
+        <p><span className="text-emerald-400">✓</span> <span className={m}>roas</span> 0.65 <span className={m}>= db 0.6514 (rounded)</span></p>
+        <p><span className="text-emerald-400">✓</span> <span className={m}>spend</span> 4728.81 <span className={m}>= db 4728.81</span></p>
+        <p className="mt-1 text-emerald-300">grounding_passed: true</p>
+      </div>
+    </div>
+  )
+}
+
+function GitHubIcon() {
+  return (
+    <svg viewBox="0 0 16 16" className="h-4 w-4 fill-current" aria-hidden>
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+    </svg>
   )
 }
