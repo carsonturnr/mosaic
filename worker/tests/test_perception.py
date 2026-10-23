@@ -210,3 +210,49 @@ def test_perceive_static_and_failure(tmp_path: Path) -> None:
         perceive_creative(LLM(Bad()), store, storage, store.select("creatives", id="c2")[0]) is None
     )
     assert store.select("creatives", id="c2")[0]["perception_status"] == "failed"
+
+
+def test_workspace_taxonomy_overrides_defaults_and_adds_custom() -> None:
+    from mosaic.perception.tagging import build_prompt, load_taxonomy
+
+    store = MemoryStore()
+    for r in TAXONOMY_ROWS:
+        store.insert("taxonomy_dimensions", r)
+    store.insert(
+        "taxonomy_dimensions",
+        {
+            "workspace_id": "ws",
+            "key": "offer",
+            "label": "Offer",
+            "applies_to": "ad",
+            "allowed_values": ["none", "BOGO"],
+        },
+    )
+    store.insert(
+        "taxonomy_dimensions",
+        {
+            "workspace_id": "ws",
+            "key": "creator",
+            "label": "Creator",
+            "description": "Who appears on camera",
+            "applies_to": "ad",
+            "allowed_values": None,
+        },
+    )
+    store.insert(
+        "taxonomy_dimensions",
+        {
+            "workspace_id": "other",
+            "key": "offer",
+            "label": "Offer",
+            "applies_to": "ad",
+            "allowed_values": ["leak"],
+        },
+    )
+    tax = {d.key: d for d in load_taxonomy(store, "ws")}
+    assert tax["offer"].allowed == ["none", "BOGO"]
+    assert tax["creator"].allowed is None
+    assert tax["angle"].allowed == ["convenience", "social proof"]
+    prompt = build_prompt(list(tax.values()), {"primary_text": "x"}, [], is_video=False)
+    assert "- offer (Offer): none, BOGO" in prompt and "leak" not in prompt
+    assert "- creator (Who appears on camera): free text, short phrase" in prompt
