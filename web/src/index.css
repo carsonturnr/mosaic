@@ -1,1 +1,10 @@
 @import "tailwindcss";
+
+/* Chart role tokens (light only for now; the app has no dark mode yet). */
+.viz {
+  --surface: #ffffff;
+  --grid: #ececea;
+  --text-primary: #0b0b0b;
+  --text-muted: #6b6a66;
+  --series-1: #2a78d6;
+}

@@ -5,6 +5,8 @@ import { Landing } from './pages/Landing'
 import { Privacy } from './pages/Privacy'
 import { SignIn } from './pages/SignIn'
 import { Terms } from './pages/Terms'
+import { AdDetail } from './pages/AdDetail'
+import { Library } from './pages/Library'
 import { Workspace } from './pages/Workspace'
 import { Workspaces } from './pages/Workspaces'
 
@@ -20,6 +22,8 @@ export default function App() {
           <Route element={<RequireAuth />}>
             <Route path="/app" element={<Workspaces />} />
             <Route path="/app/w/:id" element={<Workspace />} />
+            <Route path="/app/w/:id/library" element={<Library />} />
+            <Route path="/app/w/:id/ads/:adId" element={<AdDetail />} />
           </Route>
         </Routes>
       </BrowserRouter>
