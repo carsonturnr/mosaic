@@ -1,4 +1,13 @@
 @import "tailwindcss";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/jetbrains-mono";
+@import "@fontsource/instrument-serif/400-italic.css";
+
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
 
 /* Chart role tokens (light only for now; the app has no dark mode yet). */
 .viz {
@@ -7,4 +16,48 @@
   --text-primary: #0b0b0b;
   --text-muted: #6b6a66;
   --series-1: #2a78d6;
+}
+
+/* Marketing site (dark). */
+.site {
+  --site-bg: #08080a;
+  --site-card: #0f0f12;
+  --site-line: rgb(255 255 255 / 0.08);
+  --site-text: #ededef;
+  --site-muted: #8a8f98;
+  --cluster-1: #3987e5;
+  --cluster-2: #d95926;
+  --cluster-3: #199e70;
+  --cluster-4: #9085e9;
+  background: var(--site-bg);
+  color: var(--site-text);
+  color-scheme: dark;
+}
+
+.site-grid-bg {
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.035) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 30%, transparent 75%);
+}
+
+.accent-text {
+  background: linear-gradient(100deg, #b3a8ff 0%, #7aa7ff 45%, #6ee7c8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+.rise { animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.rise-1 { animation-delay: 0.08s; }
+.rise-2 { animation-delay: 0.16s; }
+.rise-3 { animation-delay: 0.24s; }
+.rise-4 { animation-delay: 0.36s; }
+@media (prefers-reduced-motion: reduce) {
+  .rise { animation: none; }
 }

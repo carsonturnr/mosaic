@@ -3,7 +3,11 @@ import { supabase } from '../lib/supabase'
 
 type Status = 'idle' | 'sending' | 'done' | 'exists' | 'error'
 
-export function WaitlistForm({ product, source }: { product: 'mosaic' | 'stride_lab'; source: string }) {
+export function WaitlistForm({ product, source, align = 'left' }: {
+  product: 'mosaic' | 'stride_lab'
+  source: string
+  align?: 'left' | 'center'
+}) {
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState<Status>('idle')
 
@@ -18,17 +22,16 @@ export function WaitlistForm({ product, source }: { product: 'mosaic' | 'stride_
 
   if (status === 'done' || status === 'exists') {
     return (
-      <p className="text-sm text-neutral-700">
+      <p className={`flex items-center gap-2 text-sm text-[var(--site-text)] ${align === 'center' ? 'justify-center' : ''}`} role="status">
+        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400" aria-hidden>✓</span>
         {status === 'done' ? "You're on the list. We'll email you when it's ready." : "You're already on the list."}
       </p>
     )
   }
 
   return (
-    <form onSubmit={submit} className="flex w-full max-w-md flex-col gap-2 sm:flex-row">
-      <label className="sr-only" htmlFor={`waitlist-${source}`}>
-        Email
-      </label>
+    <form onSubmit={submit} className={`flex w-full max-w-md flex-col gap-2 sm:flex-row ${align === 'center' ? 'mx-auto' : ''}`}>
+      <label className="sr-only" htmlFor={`waitlist-${source}`}>Email</label>
       <input
         id={`waitlist-${source}`}
         type="email"
@@ -36,16 +39,16 @@ export function WaitlistForm({ product, source }: { product: 'mosaic' | 'stride_
         placeholder="you@brand.com"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        className="flex-1 rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm outline-none focus:border-neutral-900"
+        className="h-11 w-full shrink-0 rounded-lg border sm:w-auto sm:flex-1 border-[var(--site-line)] bg-white/[0.04] px-3.5 text-sm text-[var(--site-text)] outline-none transition placeholder:text-[var(--site-muted)] focus:border-white/25 focus:bg-white/[0.06]"
       />
       <button
         type="submit"
         disabled={status === 'sending'}
-        className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50"
+        className="h-11 rounded-lg bg-[var(--site-text)] px-5 text-sm font-medium text-[var(--site-bg)] transition hover:bg-white disabled:opacity-50"
       >
-        {status === 'sending' ? 'Joining…' : 'Join the waitlist'}
+        {status === 'sending' ? 'Joining…' : 'Get early access'}
       </button>
-      {status === 'error' && <p className="text-sm text-red-700">Something went wrong. Try again.</p>}
+      {status === 'error' && <p className="text-sm text-red-400 sm:basis-full">Something went wrong. Try again.</p>}
     </form>
   )
 }
