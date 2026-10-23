@@ -13,6 +13,7 @@ import {
   type Window,
 } from '../lib/library'
 import { supabase } from '../lib/supabase'
+import { fetchAdCustomTags, fetchCustomTags, type CustomTag as UserTag } from '../lib/taxonomy'
 import { useAsync } from '../lib/useAsync'
 
 type SortKey = 'spend' | 'roas' | 'ctr' | 'cpa' | 'hook_rate'
@@ -34,6 +35,8 @@ interface LibraryData {
   ads: AdPerf[]
   tags: Map<string, Map<string, CreativeTag>>
   thumbs: Record<string, string>
+  userTags: UserTag[]
+  adUserTags: Map<string, Set<string>> // ad_id -> custom tag ids
 }
 
 async function loadLibrary(id: string, w: Window): Promise<LibraryData> {
@@ -42,11 +45,15 @@ async function loadLibrary(id: string, w: Window): Promise<LibraryData> {
     fetchPerformance(id, w),
   ])
   const creativeIds = ads.map((a) => a.creative_id).filter((c): c is string => !!c)
-  const [tags, thumbs] = await Promise.all([
+  const [tags, thumbs, userTags, applied] = await Promise.all([
     fetchTags(creativeIds),
     signedUrls(ads.map((a) => a.thumbnail_path ?? '').filter(Boolean)),
+    fetchCustomTags(id),
+    fetchAdCustomTags(ads.map((a) => a.ad_id)),
   ])
-  return { workspaceName: ws.data?.name, ads, tags: tagsByCreative(tags), thumbs }
+  const adUserTags = new Map<string, Set<string>>()
+  for (const a of applied) adUserTags.set(a.ad_id, (adUserTags.get(a.ad_id) ?? new Set()).add(a.custom_tag_id))
+  return { workspaceName: ws.data?.name, ads, tags: tagsByCreative(tags), thumbs, userTags, adUserTags }
 }
 
 export function Library() {
@@ -55,6 +62,7 @@ export function Library() {
   const [sort, setSort] = useState<SortKey>('spend')
   const [type, setType] = useState<TypeFilter>('all')
   const [tagFilter, setTagFilter] = useState<Record<TagFilterKey, string>>({ format: '', hook_type: '', angle: '' })
+  const [userTag, setUserTag] = useState('')
 
   const { data, error, loading } = useAsync(() => loadLibrary(id, win), [id, win])
 
@@ -80,6 +88,7 @@ export function Library() {
       .filter((a) =>
         TAG_FILTERS.every((k) => !tagFilter[k] || data.tags.get(a.creative_id ?? '')?.get(k)?.value === tagFilter[k]),
       )
+      .filter((a) => !userTag || (data.adUserTags.get(a.ad_id)?.has(userTag) ?? false))
       .sort((x, y) => {
         const a = x[s.key]
         const b = y[s.key]
@@ -88,7 +97,7 @@ export function Library() {
         if (b == null) return -1
         return s.asc ? a - b : b - a
       })
-  }, [data, sort, type, tagFilter])
+  }, [data, sort, type, tagFilter, userTag])
 
   const summary = useMemo(() => {
     const spend = visible.reduce((t, a) => t + a.spend, 0)
@@ -97,7 +106,7 @@ export function Library() {
     return { spend, roas: spend > 0 ? value / spend : null, cpa: purchases > 0 ? spend / purchases : null }
   }, [visible])
 
-  const filtersActive = type !== 'all' || TAG_FILTERS.some((k) => tagFilter[k])
+  const filtersActive = type !== 'all' || !!userTag || TAG_FILTERS.some((k) => tagFilter[k])
 
   return (
     <main className="mx-auto max-w-6xl p-6">
@@ -113,11 +122,15 @@ export function Library() {
             onChange={(v) => setTagFilter((f) => ({ ...f, [k]: v }))}
             options={[['', 'Any'], ...tagOptions[k].map((o): [string, string] => [o, o])]} />
         ))}
+        {data && data.userTags.length > 0 && (
+          <Select label="Custom tag" value={userTag} onChange={setUserTag}
+            options={[['', 'Any'], ...data.userTags.map((t): [string, string] => [t.id, t.name])]} />
+        )}
         <Select label="Sort by" value={sort} onChange={(v) => setSort(v as SortKey)}
           options={SORTS.map((s): [string, string] => [s.key, s.label])} />
         {filtersActive && (
           <button type="button" className="pb-2 text-neutral-500 underline hover:text-neutral-900"
-            onClick={() => { setType('all'); setTagFilter({ format: '', hook_type: '', angle: '' }) }}>
+            onClick={() => { setType('all'); setUserTag(''); setTagFilter({ format: '', hook_type: '', angle: '' }) }}>
             Clear filters
           </button>
         )}
@@ -150,6 +163,7 @@ export function Library() {
       <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {data && visible.map((ad) => (
           <AdCard key={ad.ad_id} ad={ad} workspaceId={id}
+            userTags={data.userTags.filter((t) => data.adUserTags.get(ad.ad_id)?.has(t.id))}
             tags={data.tags.get(ad.creative_id ?? '')} thumb={ad.thumbnail_path ? data.thumbs[ad.thumbnail_path] : undefined} />
         ))}
       </ul>
@@ -157,8 +171,9 @@ export function Library() {
   )
 }
 
-function AdCard({ ad, tags, thumb, workspaceId }: {
+function AdCard({ ad, tags, thumb, workspaceId, userTags }: {
   ad: AdPerf
+  userTags: UserTag[]
   tags: Map<string, CreativeTag> | undefined
   thumb: string | undefined
   workspaceId: string
@@ -197,6 +212,12 @@ function AdCard({ ad, tags, thumb, workspaceId }: {
           <div className="mt-1.5 flex min-h-5 flex-wrap gap-1">
             {chips.map((c) => (
               <span key={c} className="rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] text-neutral-700">{c}</span>
+            ))}
+            {userTags.map((t) => (
+              <span key={t.id} className="flex items-center gap-1 rounded border border-neutral-200 px-1.5 py-0.5 text-[11px] text-neutral-700">
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: t.color ?? '#a3a3a3' }} aria-hidden />
+                {t.name}
+              </span>
             ))}
           </div>
           <dl className="mt-3 grid grid-cols-4 gap-1 text-xs">

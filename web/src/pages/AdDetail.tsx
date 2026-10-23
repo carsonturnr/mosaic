@@ -6,6 +6,7 @@ import { fmt } from '../lib/format'
 import { fetchPerformance, fetchTags, signedUrls, type AdPerf, type CreativeTag } from '../lib/library'
 import { supabase } from '../lib/supabase'
 import type { Tables } from '../lib/types'
+import { fetchAdCustomTags, fetchCustomTags, setAdCustomTag } from '../lib/taxonomy'
 import { useAsync } from '../lib/useAsync'
 
 type Daily = Pick<
@@ -100,6 +101,20 @@ export function AdDetail() {
   const { id = '', adId = '' } = useParams<{ id: string; adId: string }>()
   const { data, error, loading } = useAsync(() => loadDetail(id, adId), [id, adId])
   const [metric, setMetric] = useState<ChartMetric>('spend')
+  const custom = useAsync(async () => {
+    const [all, applied] = await Promise.all([fetchCustomTags(id), fetchAdCustomTags([adId])])
+    return { all, applied: new Set(applied.map((a) => a.custom_tag_id)) }
+  }, [id, adId])
+  const [tagError, setTagError] = useState<string | null>(null)
+  const toggleTag = async (tagId: string, on: boolean) => {
+    setTagError(null)
+    try {
+      await setAdCustomTag(adId, tagId, on)
+      custom.reload()
+    } catch (e) {
+      setTagError(e instanceof Error ? e.message : String(e))
+    }
+  }
 
   const isVideo = data?.creative?.type === 'video'
   const metrics = CHART_METRICS.filter((m) => !m.video || isVideo)
@@ -191,6 +206,29 @@ export function AdDetail() {
               </div>
             </div>
             <LineChart points={points} format={active.format} tickFormat={active.tick} label={active.label} />
+          </div>
+
+          <div className="mt-8">
+            <h3 className="mb-2 text-sm font-medium">Custom tags</h3>
+            {custom.data && custom.data.all.length === 0 ? (
+              <p className="text-sm text-neutral-500">
+                No custom tags yet. Create them in <Link to={`/app/w/${id}/settings`} className="underline">Settings</Link>.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {(custom.data?.all ?? []).map((t) => {
+                  const on = custom.data?.applied.has(t.id) ?? false
+                  return (
+                    <button key={t.id} type="button" aria-pressed={on} onClick={() => void toggleTag(t.id, !on)}
+                      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs ${on ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-300 text-neutral-700 hover:border-neutral-500'}`}>
+                      <span className="h-2 w-2 rounded-full" style={{ background: t.color ?? '#a3a3a3' }} aria-hidden />
+                      {t.name}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+            {tagError && <p className="mt-2 text-xs text-red-700">{tagError}</p>}
           </div>
 
           <div className="mt-8">

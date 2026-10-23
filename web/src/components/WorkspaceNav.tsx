@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 const tabs = [
   { to: '', label: 'Overview', end: true, also: null },
   { to: 'library', label: 'Library', end: false, also: '/ads/' }, // ad detail lives under the library
+  { to: 'settings', label: 'Settings', end: false, also: null },
 ]
 
 export function WorkspaceNav({ id, name }: { id: string; name: string | undefined }) {
