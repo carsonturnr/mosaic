@@ -69,6 +69,11 @@ export interface Snapshot {
   outliers: { ad_id: string; metric: Metric; z: number; direction: 'high' | 'low'; peer_group: string; value: number }[]
   fatigue: { ad_id: string; metric: 'ctr' | 'hook_rate'; early: number; late: number; change: number; p_value: number }[]
   underfunded: { ad_id: string; metric: Metric; low: number; account: number; spend_share: number }[]
+  concepts: {
+    clusters: { label: string; creative_ids: string[]; spend: number; spend_share: number }[]
+    n_creatives: number
+    diversity: number
+  } | null
 }
 
 export interface SnapshotRow {

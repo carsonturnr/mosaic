@@ -101,6 +101,8 @@ export function Analysis() {
 
           <Signals snap={s} adsById={adsById} workspaceId={id} />
 
+          {s.concepts && s.concepts.clusters.length > 0 && <ConceptsPanel concepts={s.concepts} />}
+
           <section className="mt-10">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-base font-semibold">{m.label} by tag</h2>
@@ -263,6 +265,36 @@ function Signals({ snap, adsById, workspaceId }: {
           )}
         </div>
       ))}
+    </section>
+  )
+}
+
+function ConceptsPanel({ concepts }: { concepts: NonNullable<Snapshot['concepts']> }) {
+  const top = concepts.clusters.slice(0, 6)
+  return (
+    <section className="mt-10 grid gap-6 rounded-lg border border-neutral-200 p-5 md:grid-cols-[220px_1fr]">
+      <div>
+        <h2 className="text-base font-semibold">Concept diversity</h2>
+        <p className="mt-3 text-4xl font-semibold tabular-nums">{concepts.diversity.toFixed(1)}</p>
+        <p className="mt-1 text-sm text-neutral-600">
+          effective concepts, by spend, from {concepts.n_creatives} creatives in {concepts.clusters.length} groups.
+        </p>
+      </div>
+      <ul className="space-y-2.5">
+        {top.map((c) => (
+          <li key={c.label + c.creative_ids[0]}>
+            <div className="flex justify-between gap-3 text-sm">
+              <span className="truncate">
+                {c.label} <span className="text-neutral-400">· {c.creative_ids.length} {c.creative_ids.length === 1 ? 'creative' : 'creatives'}</span>
+              </span>
+              <span className="shrink-0 tabular-nums text-neutral-600">{fmt.pct(c.spend_share, 0)}</span>
+            </div>
+            <div className="mt-1 h-1.5 rounded-full bg-neutral-100">
+              <div className="h-1.5 rounded-full bg-[#2a78d6]" style={{ width: `${Math.max(1, c.spend_share * 100)}%` }} />
+            </div>
+          </li>
+        ))}
+      </ul>
     </section>
   )
 }
