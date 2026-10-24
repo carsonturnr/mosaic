@@ -129,7 +129,10 @@ def strategist_report(workspace_id: str, principal: Auth) -> dict[str, Any]:
 
     try:
         row, run = generate_report(
-            store, workspace_id, anthropic_create(settings.anthropic_api_key)
+            store,
+            workspace_id,
+            anthropic_create(settings.anthropic_api_key),
+            tracer=jobs.build_tracer(),
         )
     except AgentError as exc:
         raise HTTPException(502, str(exc)) from exc
@@ -165,6 +168,7 @@ def briefs_report(
             workspace_id,
             anthropic_create(settings.anthropic_api_key),
             request=body.request if body else None,
+            tracer=jobs.build_tracer(),
         )
     except AgentError as exc:
         raise HTTPException(502, str(exc)) from exc

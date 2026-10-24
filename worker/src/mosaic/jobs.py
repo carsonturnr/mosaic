@@ -132,17 +132,26 @@ def for_all_sources(store: Store, settings: Settings, job: str) -> list[dict[str
     return results
 
 
+def build_tracer() -> Any:
+    """Langfuse when LANGFUSE_SECRET_KEY is set, otherwise a no-op."""
+    import os
+
+    from mosaic.llm import LangfuseTracer, NullTracer
+
+    return LangfuseTracer() if os.environ.get("LANGFUSE_SECRET_KEY") else NullTracer()
+
+
 def build_llm(settings: Settings) -> Any:
     """The production LLM: Gemini provider, disk cache, Langfuse tracing when configured."""
     import os
     from pathlib import Path
 
-    from mosaic.llm import LLM, DiskCache, LangfuseTracer, NullTracer
+    from mosaic.llm import LLM, DiskCache
     from mosaic.providers import GeminiProvider
 
     if not settings.gemini_api_key:
         raise RuntimeError("GEMINI_API_KEY is not set")
-    tracer = LangfuseTracer() if os.environ.get("LANGFUSE_SECRET_KEY") else NullTracer()
+    tracer = build_tracer()
     cache_dir = Path(os.environ.get("MOSAIC_CACHE_DIR", "/tmp/mosaic-llm-cache"))
     return LLM(GeminiProvider(settings.gemini_api_key), cache=DiskCache(cache_dir), tracer=tracer)
 

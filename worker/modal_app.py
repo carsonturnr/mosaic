@@ -87,7 +87,16 @@ def perceive() -> list[dict[str, Any]]:
     return results
 
 
-@app.function(image=image, secrets=secrets, timeout=600)
+@app.function(image=image, secrets=secrets, schedule=modal.Cron("30 8 * * *"), timeout=1800)
+def nightly_evals() -> None:
+    """Planted-problem and grounding evals, recorded to eval_runs for the dashboard."""
+    import subprocess
+    import sys
+
+    subprocess.run([sys.executable, "-m", "mosaic.evals", "--record"], check=True)
+
+
+@app.function(image=image, secrets=secrets, timeout=900)
 @modal.asgi_app()
 def web() -> Any:
     from mosaic.api import app as fastapi_app
