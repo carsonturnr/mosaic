@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { WorkspaceNav } from '../components/WorkspaceNav'
 import { workerApi, type MetaAdAccount } from '../lib/api'
 import { loginWithFacebook } from '../lib/meta'
@@ -19,6 +19,8 @@ interface Overview {
   sources: DataSource[]
   runs: SyncRun[]
   counts: Counts
+  analyzed: boolean
+  reported: boolean
 }
 
 export function Workspace() {
@@ -31,12 +33,14 @@ export function Workspace() {
 
   const overview = useAsync(async (): Promise<Overview | undefined> => {
     if (!id) return undefined
-    const [ws, ds, cCamp, cAds, cCr] = await Promise.all([
+    const [ws, ds, cCamp, cAds, cCr, cSnap, cRep] = await Promise.all([
       supabase.from('workspaces').select('*').eq('id', id).single(),
       supabase.from('data_sources').select('*').eq('workspace_id', id),
       supabase.from('campaigns').select('id', { count: 'exact', head: true }).eq('workspace_id', id),
       supabase.from('ads').select('id', { count: 'exact', head: true }).eq('workspace_id', id),
       supabase.from('creatives').select('id', { count: 'exact', head: true }).eq('workspace_id', id),
+      supabase.from('analysis_snapshots').select('id', { count: 'exact', head: true }).eq('workspace_id', id),
+      supabase.from('reports').select('id', { count: 'exact', head: true }).eq('workspace_id', id),
     ])
     if (ws.error) throw new Error(ws.error.message)
     const sources = (ds.data ?? []) as DataSource[]
@@ -58,6 +62,8 @@ export function Workspace() {
       sources,
       runs,
       counts: { campaigns: cCamp.count ?? 0, ads: cAds.count ?? 0, creatives: cCr.count ?? 0 },
+      analyzed: (cSnap.count ?? 0) > 0,
+      reported: (cRep.count ?? 0) > 0,
     }
   }, [id])
   const workspace = overview.data?.workspace ?? null
@@ -103,6 +109,7 @@ export function Workspace() {
   return (
     <main className="mx-auto max-w-3xl p-6">
       <WorkspaceNav id={id} name={workspace?.name} />
+      {!readOnly && overview.data && <GettingStarted id={id} o={overview.data} />}
 
       {counts && (
         <dl className="mb-6 grid grid-cols-3 gap-3 text-sm">
@@ -205,5 +212,33 @@ export function Workspace() {
 
       {(error ?? overview.error) && <p className="mt-4 text-sm text-red-700">{error ?? overview.error}</p>}
     </main>
+  )
+}
+
+function GettingStarted({ id, o }: { id: string; o: Overview }) {
+  const steps = [
+    { done: o.sources.length > 0, label: 'Connect a Meta ad account', hint: 'Use "Connect Meta ad account" below.' },
+    { done: o.counts.ads > 0, label: 'Run the first sync', hint: 'Imports 90 days of ads and results.' },
+    { done: o.analyzed, label: 'Review the analysis', hint: 'Rankings, signals and concepts appear after a sync.', to: `/app/w/${id}/analysis` },
+    { done: o.reported, label: 'Generate a strategist report', hint: 'Every claim cites its ads and numbers.', to: `/app/w/${id}/report` },
+  ]
+  if (steps.every((s) => s.done)) return null
+  return (
+    <section className="mb-6 rounded-lg border border-neutral-200 p-4">
+      <h2 className="text-sm font-semibold">Getting started</h2>
+      <ol className="mt-3 space-y-2 text-sm">
+        {steps.map((s, i) => (
+          <li key={s.label} className="flex gap-3">
+            <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs ${s.done ? 'bg-emerald-600 text-white' : 'border border-neutral-300 text-neutral-500'}`} aria-hidden>
+              {s.done ? '✓' : i + 1}
+            </span>
+            <span className={s.done ? 'text-neutral-400 line-through' : ''}>
+              {s.to && !s.done ? <Link to={s.to} className="underline">{s.label}</Link> : s.label}
+              {!s.done && <span className="ml-2 text-xs text-neutral-500">{s.hint}</span>}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </section>
   )
 }

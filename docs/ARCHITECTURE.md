@@ -21,7 +21,7 @@
 
 ---
 
-## 2. Current status (as of Oct 20, 2026, evening)
+## 2. Current status (as of Oct 24, 2026)
 
 - Meta developer app **"Mosaic"** created (App ID `4146949778771922`), in Development mode, with the **Create & manage ads with Marketing API** use case. `ads_read`, `ads_management`, `business_management`, `pages_show_list`, `pages_read_engagement` show "Ready for testing".
 - Sandbox ad account created: **`act_1129851222828729`** ("Mosaic Dev", USD, America/Chicago), associated with the "Mosaic Dev" Facebook page.
@@ -35,7 +35,8 @@
 - **Week 3 code done (Oct 21):** `mosaic.media` (ingest to private `creatives` bucket, ffprobe, skip unchanged hash), `perception/scenes.py` (PySceneDetect, 0.5 s min, forced 3.0 s boundary, keyframes), `mosaic.llm` (the one LLM wrapper: validation + one retry, backoff, content cache, tracing), `providers.GeminiProvider` (`gemini-2.5-flash`), `perception/tagging.py` + `pipeline.py`, Modal `perceive` every 4 h, CLI `python -m mosaic.perception <files>`. 51 tests. Not yet run against a real model.
 - **Deployed (Oct 21):** web at https://mosaicads.vercel.app (Vercel team Creation, auto-deploys from GitHub `main`, root `web/`); worker on Modal app `mosaic` with API at https://carsonturnr--mosaic-web.us-east.modal.run and schedules structure/today_kpis/perceive every 4 h, restatement nightly 08:00 UTC; config from Modal secret `mosaic-env`. Meta insight/creative field names verified live (`MOSAIC_LIVE_META=1 uv run pytest tests/test_meta_live.py`). When running Modal CLI after sourcing `.env`, unset the empty `MODAL_TOKEN_ID`/`MODAL_TOKEN_SECRET` or they override `~/.modal.toml`.
 - **Week 4 progress (Oct 23):** `ad_performance(workspace, since, until)` SQL function (security invoker, tested in CI via `supabase/tests/`); Modal structure sync spawns `perceive` when new creatives appear; web creative library (`/app/w/:id/library`: filters, sort, low-data badge under 5,000 impressions) and ad detail (`/app/w/:id/ads/:adId`: media, KPIs, daily chart, tags with source, scene timeline). Synthetic ground-truth tags display as source "Synthetic". Settings tab (`/app/w/:id/settings`): edit default dimensions as workspace overrides with reset, add custom dimensions, custom tags with colors applied on ad detail and filterable in the library; `length_bucket` is computed and read-only. Remaining: the owner's own taxonomy content, and perception edge cases once real ads exist.
-- **Blocked / pending:** Facebook Login for Business needs a configuration id (`VITE_META_CONFIG_ID`). Perception needs `GEMINI_API_KEY` and the 20–40 dev ads.
+- **Weeks 5–7 code done (Oct 24):** analytics (`mosaic.analytics`: beta-binomial and gamma-Poisson shrinkage with priors capped at one typical ad, tag rankings incl. static vs video with a 10% minimum lift, weekly trends, robust-z outliers, fading ads, underfunded winners, concept clusters on tags + Gemini script embeddings with a spend-weighted diversity score) stored as `analysis_snapshots` (7/30/90/all) after every metrics sync; agents (`mosaic.agents`: one shared loop, strategist report and brief generator on `claude-opus-5-5` with typed read-only tools, strict submit tools, server-side refusal fallbacks, grounding validator with one retry); evals (`mosaic.evals`: planted problems 100% on 8 seeds gated in CI against `evals/baseline.json`, grounding pass rate, tagging F1 scorer; nightly `nightly_evals` on Modal writes `eval_runs`); web tabs Analysis, Report, Briefs, Evals page, brand memory; public read-only demo (`/demo`, fictional brand Driftwell, `seed --demo`).
+- **Blocked / pending:** Facebook Login for Business needs a configuration id (`VITE_META_CONFIG_ID`). Perception needs the 20–40 dev ads (Gemini key is set). Agents need `ANTHROPIC_API_KEY` in `.env` and the Modal secret. Tagging F1 needs the hand-labeled set.
 - **Creatives for development:** 20–40 public ads from ONE brand via the Meta Ad Library, stored in Supabase Storage only; the local media folder is git-ignored. **Before anything public** (demo video, deployed link, public repo), swap them for the owner's own creatives or a fictional brand so synthetic metrics never sit on a real company's ads.
 
 ---
@@ -355,6 +356,7 @@ Enable RLS on every workspace-scoped table: a user can access rows only for work
 
 - **Strategist report agent** (Claude) with typed tools: `get_tag_performance`, `get_outliers`, `get_clusters`, `get_ad_detail`, `search_ads`. Output schema: sections (working / double down / cut / missing concepts), each item = `{claim, ad_ids[], metrics{name: value}}`.
 - **Brief generator** with the same tools plus brand memory (guidelines + past learnings stored per workspace). Output: briefs, scripts, hook lists, static-image direction, test-plan rows.
+- **Citation format (as built):** instead of `metrics{name: value}`, each claim carries `metrics: [{entity, metric, value, window}]` where entity is `ad:<ref>`, `tag:<dimension>=<value>`, `concepts` or `account`, so every number can be checked against a specific row.
 - **Grounding validator:** before saving, every `ad_id` must exist in the workspace and every cited metric must match the DB within rounding. Failed → regenerate once → otherwise save with `grounding_passed=false` and surface a warning.
 - All calls traced in Langfuse.
 

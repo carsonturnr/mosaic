@@ -4,7 +4,7 @@
 
 Built as a solo applied-AI project. The target is a deployed, demo-ready MVP by December 2026. Current status is tracked in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §2.
 
-**Live:** [mosaicads.vercel.app](https://mosaicads.vercel.app)
+**Live:** [mosaicads.vercel.app](https://mosaicads.vercel.app) · **[Try the demo](https://mosaicads.vercel.app/demo)** (fictional brand, no sign-in)
 
 [![CI](https://github.com/carsonturnr/mosaic/actions/workflows/ci.yml/badge.svg)](https://github.com/carsonturnr/mosaic/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
