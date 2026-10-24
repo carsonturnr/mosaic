@@ -42,15 +42,20 @@ def test_backfill_then_refresh_records_runs(monkeypatch: Any) -> None:
     monkeypatch.setattr(jobs, "_today", lambda: date(2026, 10, 18))
     store, ds = _store_with_synthetic_source()
     runs = jobs.backfill(store, SETTINGS, ds, days=10)
-    assert [r["job"] for r in runs] == ["structure", "backfill"]
+    assert [r["job"] for r in runs] == ["structure", "backfill", "analyze"]
     assert runs[0]["stats"]["ads"] == 24 and runs[1]["stats"]["rows"] > 0
     jobs.refresh(store, SETTINGS, "ws")
     assert [r["job"] for r in store.tables["sync_runs"]] == [
         "structure",
         "backfill",
+        "analyze",
         "structure",
         "today_kpis",
+        "analyze",
     ]
+    snaps = {r["window_key"]: r for r in store.tables["analysis_snapshots"]}
+    assert set(snaps) == {"7", "30", "90", "all"}
+    assert snaps["all"]["payload"]["ads"]
     assert all(r["status"] == "done" for r in store.tables["sync_runs"])
 
 
@@ -81,7 +86,7 @@ def test_api_requires_key(monkeypatch: Any) -> None:
     assert bad.status_code == 401
     r = c.post("/workspaces/ws/refresh", headers={"Authorization": "Bearer k1"})
     assert r.status_code == 200
-    assert [x["job"] for x in r.json()["runs"]] == ["structure", "today_kpis"]
+    assert [x["job"] for x in r.json()["runs"]] == ["structure", "today_kpis", "analyze"]
 
 
 def test_api_accepts_owner_jwt_and_rejects_other_users(monkeypatch: Any) -> None:
@@ -120,7 +125,7 @@ def test_meta_connect_exchanges_token_stores_it_and_backfills(monkeypatch: Any) 
     assert ds["kind"] == "meta_live" and ds["meta_ad_account_id"] == "act_99"
     assert read_token(store, ds["token_secret_id"]) == "LONG"
     # TestClient runs background tasks before returning
-    assert [x["job"] for x in store.tables["sync_runs"]] == ["structure", "backfill"]
+    assert [x["job"] for x in store.tables["sync_runs"]] == ["structure", "backfill", "analyze"]
     # reconnecting updates the same data source and rotates the secret in place
     c.post(
         "/workspaces/ws/meta/connect",

@@ -103,12 +103,16 @@ def seed(
         store, ds_id, "seed_metrics", lambda: sync_metrics(source, ws_id, store, start_date, until)
     )
     n_tags = write_ground_truth_tags(store, ws_id, source.ground_truth_tags())
+    from mosaic.analytics.run import analyze_workspace
+
+    analysis = run_job(store, ds_id, "analyze", lambda: analyze_workspace(store, ws_id))
     return {
         "workspace_id": ws_id,
         "data_source_id": ds_id,
         "structure": structure["stats"],
         "metrics": metrics["stats"],
         "tags": n_tags,
+        "analysis": analysis["stats"],
     }
 
 

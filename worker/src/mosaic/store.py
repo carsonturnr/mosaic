@@ -9,6 +9,7 @@ from collections.abc import Iterable
 from typing import Any, Protocol
 
 Row = dict[str, Any]
+PAGE = 1000
 
 
 class Store(Protocol):
@@ -49,10 +50,18 @@ class SupabaseStore:
         return out
 
     def select(self, table: str, columns: str = "*", **eq: Any) -> list[Row]:
-        q = self._client.table(table).select(columns)
-        for k, v in eq.items():
-            q = q.in_(k, list(v)) if isinstance(v, list | tuple | set) else q.eq(k, v)
-        return q.execute().data
+        """All matching rows. PostgREST caps a response at 1,000 rows, so page through."""
+        out: list[Row] = []
+        start = 0
+        while True:
+            q = self._client.table(table).select(columns)
+            for k, v in eq.items():
+                q = q.in_(k, list(v)) if isinstance(v, list | tuple | set) else q.eq(k, v)
+            page = q.range(start, start + PAGE - 1).execute().data
+            out.extend(page)
+            if len(page) < PAGE:
+                return out
+            start += PAGE
 
     def insert(self, table: str, row: Row) -> Row:
         return self._client.table(table).insert(row).execute().data[0]

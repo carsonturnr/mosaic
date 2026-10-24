@@ -9,6 +9,7 @@ from __future__ import annotations
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
+from mosaic.analytics.run import analyze_workspace
 from mosaic.config import Settings
 from mosaic.datasources.base import DataSource
 from mosaic.datasources.meta import MetaClient, MetaLiveSource
@@ -56,16 +57,25 @@ def metrics(store: Store, settings: Settings, ds: Row, job: str, since: date, un
     )
 
 
+def analysis(store: Store, ds: Row) -> Row:
+    """Recompute every analysis window for the data source's workspace."""
+    return run_job(store, ds["id"], "analyze", lambda: analyze_workspace(store, ds["workspace_id"]))
+
+
 def today_kpis(store: Store, settings: Settings, ds: Row) -> Row:
     today = _today()
-    return metrics(store, settings, ds, "today_kpis", today - timedelta(days=1), today)
+    run = metrics(store, settings, ds, "today_kpis", today - timedelta(days=1), today)
+    analysis(store, ds)
+    return run
 
 
 def restatement(store: Store, settings: Settings, ds: Row) -> Row:
     today = _today()
-    return metrics(
+    run = metrics(
         store, settings, ds, "restatement", today - timedelta(days=RESTATEMENT_DAYS), today
     )
+    analysis(store, ds)
+    return run
 
 
 def backfill(store: Store, settings: Settings, ds: Row, days: int = BACKFILL_DAYS) -> list[Row]:
@@ -73,14 +83,19 @@ def backfill(store: Store, settings: Settings, ds: Row, days: int = BACKFILL_DAY
     return [
         structure(store, settings, ds),
         metrics(store, settings, ds, "backfill", today - timedelta(days=days), today),
+        analysis(store, ds),
     ]
 
 
 def refresh(store: Store, settings: Settings, workspace_id: str) -> list[Row]:
     out: list[Row] = []
-    for ds in store.select("data_sources", "*", workspace_id=workspace_id):
+    sources = store.select("data_sources", "*", workspace_id=workspace_id)
+    for ds in sources:
         out.append(structure(store, settings, ds))
-        out.append(today_kpis(store, settings, ds))
+        today = _today()
+        out.append(metrics(store, settings, ds, "today_kpis", today - timedelta(days=1), today))
+    if sources:
+        out.append(analysis(store, sources[0]))  # one pass covers the whole workspace
     return out
 
 

@@ -109,6 +109,15 @@ def refresh(workspace_id: str, principal: Auth) -> dict[str, Any]:
     }
 
 
+@app.post("/workspaces/{workspace_id}/analyze")
+def analyze(workspace_id: str, principal: Auth) -> dict[str, Any]:
+    store = deps.store_factory()
+    require_workspace(store, principal, workspace_id)
+    from mosaic.analytics.run import analyze_workspace
+
+    return analyze_workspace(store, workspace_id).model_dump()
+
+
 class MetaAdAccount(BaseModel):
     id: str
     name: str
