@@ -33,3 +33,6 @@ evals/results/
 
 # local creative media (stored in Supabase Storage, never committed)
 media/
+
+# hand labels reference real brands; keep private
+evals/labels/

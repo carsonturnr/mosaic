@@ -1,0 +1,11 @@
+{
+  "planted": {
+    "winning_hook": 1.0,
+    "fatigue_recall": 1.0,
+    "fatigue_precision": 1.0,
+    "hidden_winner": 1.0,
+    "static_vs_video": 1.0,
+    "near_duplicates": 1.0,
+    "all_found": 1.0
+  }
+}

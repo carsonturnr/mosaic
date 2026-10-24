@@ -37,9 +37,12 @@ export function Workspaces() {
     <main className="mx-auto max-w-2xl p-6">
       <header className="mb-8 flex items-center justify-between">
         <h1 className="text-xl font-semibold">Workspaces</h1>
-        <button type="button" onClick={() => void signOut()} className="text-sm text-neutral-600 underline">
+        <div className="flex items-center gap-4 text-sm">
+          <Link to="/app/evals" className="text-neutral-600 underline">Evals</Link>
+          <button type="button" onClick={() => void signOut()} className="text-neutral-600 underline">
           Sign out
         </button>
+        </div>
       </header>
 
       {workspaces.length === 0 ? (
