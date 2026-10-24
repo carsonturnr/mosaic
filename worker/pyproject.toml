@@ -11,6 +11,7 @@ dependencies = [
     "langfuse>=2.50",
     "modal>=0.64",
     "numpy>=2.5.4",
+    "pillow>=13.0.0",
     "pydantic>=2.9",
     "python-dotenv>=1.0",
     "scenedetect[opencv-headless]>=0.6.4",

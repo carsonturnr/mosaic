@@ -35,7 +35,10 @@ def build_source(ds: Row, settings: Settings, store: Store) -> DataSource:
         )
         return MetaLiveSource(client, ds["meta_ad_account_id"])
     if kind == "demo":
-        return SandboxSyntheticSource(seed=7)  # placeholder until DemoSource exists
+        from mosaic.datasources.demo import DemoSource
+        from mosaic.seed import DEMO_DAYS, demo_start
+
+        return DemoSource(start_date=demo_start(ds.get("created_at")), days=DEMO_DAYS)
     raise ValueError(f"unknown data source kind {kind!r}")
 
 

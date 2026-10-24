@@ -19,6 +19,8 @@ from mosaic.store import Store, SupabaseStore
 from mosaic.sync import run_job, sync_metrics, sync_structure
 
 WORKSPACE_NAME = "Mosaic Dev (synthetic)"
+DEMO_NAME = "Driftwell (demo brand)"
+DEMO_DAYS = 90
 
 
 def ensure_owner(client: Any, email: str) -> str:
@@ -116,6 +118,90 @@ def seed(
     }
 
 
+def seed_demo(
+    store: Store, storage: Any, owner_id: str, *, embedder: Any | None = None
+) -> dict[str, Any]:
+    """A public, read-only demo workspace for a fictional brand, ending today."""
+    import tempfile
+    from datetime import timedelta
+    from pathlib import Path
+
+    from mosaic.analytics.run import analyze_workspace
+    from mosaic.datasources.demo import DemoSource
+
+    rows = store.select("workspaces", "id", owner_id=owner_id, name=DEMO_NAME)
+    ws_id = (
+        rows[0]["id"]
+        if rows
+        else store.insert("workspaces", {"owner_id": owner_id, "name": DEMO_NAME, "is_demo": True})[
+            "id"
+        ]
+    )
+    store.update("workspaces", {"is_demo": True}, id=ws_id)
+    ds_rows = store.select("data_sources", "id,created_at", workspace_id=ws_id, kind="demo")
+    ds = (
+        ds_rows[0]
+        if ds_rows
+        else store.insert("data_sources", {"workspace_id": ws_id, "kind": "demo"})
+    )
+    start = demo_start(ds.get("created_at"))
+    with tempfile.TemporaryDirectory() as tmp:
+        source = DemoSource(start_date=start, days=DEMO_DAYS, media_dir=Path(tmp))
+        structure = run_job(
+            store, ds["id"], "seed_structure", lambda: sync_structure(source, ws_id, store)
+        )
+        metrics = run_job(
+            store,
+            ds["id"],
+            "seed_metrics",
+            lambda: sync_metrics(
+                source, ws_id, store, start, start + timedelta(days=DEMO_DAYS - 1)
+            ),
+        )
+        n_tags = write_ground_truth_tags(store, ws_id, source.ground_truth_tags())
+        cards = 0
+        for c in store.select("creatives", "id,external_id,type", workspace_id=ws_id):
+            media = source.card(source.get_creative(c["external_id"]))
+            path = f"{ws_id}/{c['id']}/card.png"
+            storage.upload(path, media.path, "image/png")
+            values = {"thumbnail_path": path}
+            if c["type"] != "video":
+                values["storage_path"] = path  # the card is the static ad itself
+            store.update("creatives", values, id=c["id"])
+            cards += 1
+    if embedder is not None:
+        from mosaic.perception.embed import embed_scripts
+
+        run_job(store, ds["id"], "embed", lambda: embed_scripts(store, embedder, ws_id))
+    analysis = run_job(store, ds["id"], "analyze", lambda: analyze_workspace(store, ws_id))
+    return {
+        "workspace_id": ws_id,
+        "data_source_id": ds["id"],
+        "start": start.isoformat(),
+        "structure": structure["stats"],
+        "metrics": metrics["stats"],
+        "tags": n_tags,
+        "cards": cards,
+        "analysis": analysis["stats"],
+    }
+
+
+def demo_start(created_at: Any) -> date:
+    """The demo's 90 days end the day its data source was created (stable across re-runs)."""
+    from datetime import UTC, datetime, timedelta
+
+    if created_at:
+        created = (
+            created_at
+            if isinstance(created_at, datetime)
+            else datetime.fromisoformat(str(created_at))
+        )
+        end = created.date()
+    else:
+        end = datetime.now(UTC).date()
+    return end - timedelta(days=DEMO_DAYS - 1)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--owner-email", required=True)
@@ -123,11 +209,24 @@ def main() -> None:
     parser.add_argument("--n-ads", type=int, default=24)
     parser.add_argument("--days", type=int, default=90)
     parser.add_argument("--workspace-name", default=WORKSPACE_NAME)
+    parser.add_argument(
+        "--demo", action="store_true", help="seed the public Driftwell demo workspace"
+    )
     args = parser.parse_args()
 
     settings = Settings.from_env()
     store = SupabaseStore(settings.supabase_url, settings.supabase_service_role_key)
     owner_id = ensure_owner(store.client, args.owner_email)
+    if args.demo:
+        from mosaic.media import SupabaseStorage
+        from mosaic.providers import GeminiEmbedder
+
+        embedder = GeminiEmbedder(settings.gemini_api_key) if settings.gemini_api_key else None
+        for k, v in seed_demo(
+            store, SupabaseStorage(store.client), owner_id, embedder=embedder
+        ).items():
+            print(f"{k}: {v}")
+        return
     result = seed(
         store,
         owner_id,

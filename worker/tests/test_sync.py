@@ -82,3 +82,30 @@ def test_seed_end_to_end_in_memory() -> None:
     assert again["workspace_id"] == result["workspace_id"]
     assert len(store.tables["workspaces"]) == 1 and len(store.tables["data_sources"]) == 1
     assert len(store.tables["creative_tags"]) == len(tags)
+
+
+def test_seed_demo_is_public_dated_and_has_cards() -> None:
+    from datetime import UTC, date, datetime, timedelta
+
+    from mosaic.analytics.run import latest_snapshot
+    from mosaic.media import MemoryStorage
+    from mosaic.seed import DEMO_DAYS, seed_demo
+
+    store, storage = MemoryStore(), MemoryStorage()
+    res = seed_demo(store, storage, "owner")
+    ws = store.select("workspaces", id=res["workspace_id"])[0]
+    assert ws["is_demo"] is True and ws["name"].startswith("Driftwell")
+    assert res["cards"] == 24 and len(storage.files) == 24
+    statics = [c for c in store.tables["creatives"] if c["type"] != "video"]
+    assert statics and all(c["storage_path"] and c["thumbnail_path"] for c in statics)
+    assert all(
+        c["headline"] and "Synthetic" not in (c["primary_text"] or "")
+        for c in store.tables["creatives"]
+    )
+    assert date.fromisoformat(res["start"]) == datetime.now(UTC).date() - timedelta(
+        days=DEMO_DAYS - 1
+    )
+    snap = latest_snapshot(store, res["workspace_id"], "all")
+    assert snap and snap.fatigue and snap.underfunded  # planted patterns survive the rebrand
+    again = seed_demo(store, storage, "owner")
+    assert again["workspace_id"] == res["workspace_id"] and len(store.tables["workspaces"]) == 1

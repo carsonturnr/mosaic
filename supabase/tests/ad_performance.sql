@@ -42,3 +42,17 @@ do $$ begin
   assert (select count(*) from ad_performance((select id from workspaces where name = 'A'))) = 0, 'rls leak';
 end $$;
 reset role;
+
+-- Demo workspaces are readable without owning them; private ones are not.
+insert into auth.users values ('33333333-3333-3333-3333-333333333333');
+insert into workspaces (owner_id, name, is_demo) values ('33333333-3333-3333-3333-333333333333', 'Demo', true);
+-- hosted Supabase grants these by default; RLS is what restricts rows
+grant usage on schema public to anon;
+grant select on all tables in schema public to anon;
+set role anon;
+select set_config('request.jwt.claim.sub', '', false);
+do $$ begin
+  assert (select count(*) from workspaces where name = 'Demo') = 1, 'anon cannot see demo';
+  assert (select count(*) from workspaces where name = 'A') = 0, 'anon sees private workspace';
+end $$;
+reset role;
