@@ -32,7 +32,17 @@ async function call<T>(path: string, body?: unknown): Promise<T> {
   return (await res.json()) as T
 }
 
+export interface ReportResult {
+  report_id: string
+  grounding_passed: boolean
+  problems: { section: string; claim: string; issue: string }[]
+  turns: number
+  cost_usd: number
+}
+
 export const workerApi = {
+  strategistReport: (workspaceId: string) => call<ReportResult>(`/workspaces/${workspaceId}/reports/strategist`),
+  analyze: (workspaceId: string) => call<unknown>(`/workspaces/${workspaceId}/analyze`),
   refresh: (workspaceId: string) =>
     call<{ runs: SyncRunSummary[] }>(`/workspaces/${workspaceId}/refresh`),
   metaAdAccounts: (userAccessToken: string) =>

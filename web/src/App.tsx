@@ -3,6 +3,7 @@ import { RequireAuth } from './components/RequireAuth'
 import { AuthProvider } from './lib/auth'
 import { Landing } from './pages/Landing'
 import { Privacy } from './pages/Privacy'
+import { Report } from './pages/Report'
 import { Settings } from './pages/Settings'
 import { SignIn } from './pages/SignIn'
 import { Terms } from './pages/Terms'
@@ -27,6 +28,7 @@ export default function App() {
             <Route path="/app/w/:id/library" element={<Library />} />
             <Route path="/app/w/:id/ads/:adId" element={<AdDetail />} />
             <Route path="/app/w/:id/analysis" element={<Analysis />} />
+            <Route path="/app/w/:id/report" element={<Report />} />
             <Route path="/app/w/:id/settings" element={<Settings />} />
           </Route>
         </Routes>

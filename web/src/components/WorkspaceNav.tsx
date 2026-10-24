@@ -4,6 +4,7 @@ const tabs = [
   { to: '', label: 'Overview', end: true, also: null },
   { to: 'library', label: 'Library', end: false, also: '/ads/' }, // ad detail lives under the library
   { to: 'analysis', label: 'Analysis', end: false, also: null },
+  { to: 'report', label: 'Report', end: false, also: null },
   { to: 'settings', label: 'Settings', end: false, also: null },
 ]
 
