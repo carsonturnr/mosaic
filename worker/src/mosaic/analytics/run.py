@@ -8,7 +8,9 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from mosaic.analytics.clusters import Concepts, CreativeInput, cluster
 from mosaic.analytics.compute import AdInput, Day, Snapshot, analyze
+from mosaic.perception.embed import load_embeddings, load_scripts
 from mosaic.store import Row, Store
 
 WINDOWS: dict[str, int | None] = {"7": 7, "30": 30, "90": 90, "all": None}
@@ -102,6 +104,51 @@ def load_inputs(store: Store, workspace_id: str) -> list[AdInput]:
 class AnalyzeStats(BaseModel):
     ads: int
     windows: dict[str, str]  # window -> "since..until" or "no data"
+    concepts: int | None = None
+    diversity: float | None = None
+
+
+def concepts_for(
+    store: Store, workspace_id: str, inputs: list[AdInput], snap: Snapshot
+) -> Concepts:
+    """Cluster the creatives that ran in this snapshot's window, weighted by its spend."""
+    ads = {
+        a["id"]: a["creative_id"]
+        for a in store.select("ads", "id,creative_id", workspace_id=workspace_id)
+    }
+    spend: dict[str, float] = {}
+    tags: dict[str, dict[str, str]] = {}
+    for st in snap.ads:
+        cid = ads.get(st.ad_id)
+        if cid:
+            spend[cid] = spend.get(cid, 0.0) + st.totals.spend
+    for a in inputs:
+        cid = ads.get(a.ad_id)
+        if cid:
+            tags[cid] = a.tags
+    scripts = load_scripts(store, workspace_id)
+    emb = load_embeddings(store, list(spend))
+    items = [
+        CreativeInput(cid, tags.get(cid, {}), scripts.get(cid, ""), s, emb.get(cid))
+        for cid, s in spend.items()
+    ]
+    return cluster(items)
+
+
+def save_concepts(store: Store, workspace_id: str, concepts: Concepts) -> None:
+    store.delete("concept_clusters", workspace_id=workspace_id)  # members cascade
+    for c in concepts.clusters:
+        row = store.insert(
+            "concept_clusters",
+            {
+                "workspace_id": workspace_id,
+                "label": c.label,
+                "spend": c.spend,
+                "diversity": concepts.diversity,
+            },
+        )
+        for cid in c.creative_ids:
+            store.insert("concept_cluster_members", {"cluster_id": row["id"], "creative_id": cid})
 
 
 def analyze_workspace(store: Store, workspace_id: str) -> AnalyzeStats:
@@ -112,9 +159,14 @@ def analyze_workspace(store: Store, workspace_id: str) -> AnalyzeStats:
     # Windows end at the latest day with data, not today, so a stale account still analyzes.
     until, first = max(all_days), min(all_days)
     done: dict[str, str] = {}
+    all_concepts: Concepts | None = None
     for key, n in WINDOWS.items():
         since = first if n is None else max(first, until - timedelta(days=n - 1))
         snap = analyze(inputs, since, until)
+        snap.concepts = concepts_for(store, workspace_id, inputs, snap)
+        if key == "all":
+            save_concepts(store, workspace_id, snap.concepts)
+            all_concepts = snap.concepts
         store.upsert(
             "analysis_snapshots",
             [
@@ -130,7 +182,12 @@ def analyze_workspace(store: Store, workspace_id: str) -> AnalyzeStats:
             on_conflict="workspace_id,window_key",
         )
         done[key] = f"{since}..{until}"
-    return AnalyzeStats(ads=len(inputs), windows=done)
+    return AnalyzeStats(
+        ads=len(inputs),
+        windows=done,
+        concepts=len(all_concepts.clusters) if all_concepts else None,
+        diversity=all_concepts.diversity if all_concepts else None,
+    )
 
 
 def latest_snapshot(store: Store, workspace_id: str, window_key: str = "30") -> Snapshot | None:

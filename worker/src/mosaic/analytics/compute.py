@@ -15,6 +15,7 @@ import numpy as np
 from pydantic import BaseModel, Field
 from scipy import stats as sps
 
+from mosaic.analytics.clusters import Concepts
 from mosaic.analytics.stats import (
     Estimate,
     fit_beta_prior,
@@ -175,6 +176,7 @@ class Snapshot(BaseModel):
     outliers: list[Outlier]
     fatigue: list[Fatigue]
     underfunded: list[Underfunded]
+    concepts: Concepts | None = None
 
 
 # ------------------------------------------------------------------------- helpers

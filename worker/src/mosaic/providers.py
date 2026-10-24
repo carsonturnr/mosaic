@@ -67,3 +67,38 @@ class GeminiProvider:
             time.sleep(2)
             f = self._client.files.get(name=f.name)
         return f
+
+
+EMBEDDING_MODEL = "gemini-embedding-001"
+EMBEDDING_DIM = 1024  # matches creative_embeddings.embedding vector(1024)
+
+
+class GeminiEmbedder:
+    """Text embeddings, L2-normalized (truncated Gemini embeddings are not unit length)."""
+
+    model = EMBEDDING_MODEL
+
+    def __init__(self, api_key: str, client: Any | None = None) -> None:
+        if client is None:
+            from google import genai
+
+            client = genai.Client(api_key=api_key)
+        self._client = client
+
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        from google.genai import types
+
+        out: list[list[float]] = []
+        for i in range(0, len(texts), 100):
+            resp = self._client.models.embed_content(
+                model=self.model,
+                contents=texts[i : i + 100],
+                config=types.EmbedContentConfig(
+                    output_dimensionality=EMBEDDING_DIM, task_type="SEMANTIC_SIMILARITY"
+                ),
+            )
+            for e in resp.embeddings:
+                v = list(e.values)
+                norm = sum(x * x for x in v) ** 0.5 or 1.0
+                out.append([x / norm for x in v])
+        return out

@@ -45,15 +45,33 @@ def _today() -> date:
 
 def structure(store: Store, settings: Settings, ds: Row) -> Row:
     src = build_source(ds, settings, store)
-    return run_job(
+    run = run_job(
         store, ds["id"], "structure", lambda: sync_structure(src, ds["workspace_id"], store)
     )
+    try:
+        embed(store, settings, ds)
+    except Exception:
+        pass  # the failure is recorded in sync_runs by run_job
+    return run
 
 
 def metrics(store: Store, settings: Settings, ds: Row, job: str, since: date, until: date) -> Row:
     src = build_source(ds, settings, store)
     return run_job(
         store, ds["id"], job, lambda: sync_metrics(src, ds["workspace_id"], store, since, until)
+    )
+
+
+def embed(store: Store, settings: Settings, ds: Row) -> Row | None:
+    """Script embeddings for clustering; skipped when no Gemini key is configured."""
+    if not settings.gemini_api_key:
+        return None
+    from mosaic.perception.embed import embed_scripts
+    from mosaic.providers import GeminiEmbedder
+
+    embedder = GeminiEmbedder(settings.gemini_api_key)
+    return run_job(
+        store, ds["id"], "embed", lambda: embed_scripts(store, embedder, ds["workspace_id"])
     )
 
 
