@@ -144,6 +144,41 @@ def strategist_report(workspace_id: str, principal: Auth) -> dict[str, Any]:
     }
 
 
+class BriefRequest(BaseModel):
+    request: str | None = None
+
+
+@app.post("/workspaces/{workspace_id}/reports/briefs")
+def briefs_report(
+    workspace_id: str, principal: Auth, body: BriefRequest | None = None
+) -> dict[str, Any]:
+    store, settings = deps.store_factory(), deps.settings_factory()
+    require_workspace(store, principal, workspace_id)
+    if not settings.anthropic_api_key:
+        raise HTTPException(503, "Briefs need ANTHROPIC_API_KEY on the worker")
+    from mosaic.agents.loop import AgentError
+    from mosaic.agents.run import anthropic_create, generate_briefs
+
+    try:
+        row, run = generate_briefs(
+            store,
+            workspace_id,
+            anthropic_create(settings.anthropic_api_key),
+            request=body.request if body else None,
+        )
+    except AgentError as exc:
+        raise HTTPException(502, str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    return {
+        "report_id": row["id"],
+        "grounding_passed": run.grounding.passed,
+        "problems": [p.model_dump() for p in run.grounding.problems],
+        "turns": run.turns,
+        "cost_usd": round(run.cost_usd, 4),
+    }
+
+
 class MetaAdAccount(BaseModel):
     id: str
     name: str

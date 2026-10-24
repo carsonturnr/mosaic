@@ -1,30 +1,18 @@
-"""Strategist report agent (docs/ARCHITECTURE.md §10).
-
-Claude reads the analysis through typed tools and finishes by calling submit_report.
-The report is validated against the data; on failure the agent gets one chance to
-fix it in the same conversation (append-only), then it is saved with
-grounding_passed = false.
-"""
+"""Strategist report agent (docs/ARCHITECTURE.md §10)."""
 
 from __future__ import annotations
 
-import json
-import time
 from collections.abc import Callable
-from dataclasses import dataclass, field
 from typing import Any
 
-from pydantic import ValidationError
-
-from mosaic.agents.grounding import GroundingResult, validate
+from mosaic.agents.grounding import validate
+from mosaic.agents.loop import MODEL, AgentError, AgentRun, run_agent, submit_tool
 from mosaic.agents.report import StrategistReport
-from mosaic.agents.tools import TOOL_DEFS, SnapshotTools, run_tool
+from mosaic.agents.tools import SnapshotTools
 from mosaic.analytics.compute import Snapshot
-from mosaic.llm import NullTracer, Tracer
+from mosaic.llm import Tracer
 
-MODEL = "claude-opus-5-5"
-PRICE_PER_MTOK = (4.0, 20.0)  # input, output (USD)
-MAX_TURNS = 16
+__all__ = ["MODEL", "SUBMIT_TOOL", "AgentError", "AgentRun", "run_strategist"]
 
 SYSTEM = """You are a senior creative strategist for a direct-to-consumer brand's Meta ads account.
 
@@ -43,48 +31,9 @@ Each claim must:
 
 Keep each section to at most 4 claims; an empty section is fine. When you are done, call submit_report exactly once."""
 
-SUBMIT_TOOL: dict[str, Any] = {
-    "name": "submit_report",
-    "description": "Submit the finished report. Call once, at the end.",
-    "strict": True,
-    "input_schema": StrategistReport.model_json_schema(),
-}
-
-
-class AgentError(RuntimeError):
-    pass
-
-
-@dataclass
-class AgentRun:
-    report: StrategistReport
-    grounding: GroundingResult
-    attempts: int
-    turns: int
-    input_tokens: int = 0
-    output_tokens: int = 0
-    cost_usd: float = 0.0
-    tool_calls: list[str] = field(default_factory=list)
-
-
-def _attr(obj: Any, name: str, default: Any = None) -> Any:
-    return obj.get(name, default) if isinstance(obj, dict) else getattr(obj, name, default)
-
-
-def _inline_refs(schema: dict[str, Any]) -> dict[str, Any]:
-    """Strict tool schemas can't use $ref; inline pydantic's $defs."""
-    defs = schema.get("$defs", {})
-
-    def walk(node: Any) -> Any:
-        if isinstance(node, dict):
-            if "$ref" in node:
-                return walk(defs[node["$ref"].split("/")[-1]])
-            return {k: walk(v) for k, v in node.items() if k not in ("$defs", "title")}
-        if isinstance(node, list):
-            return [walk(v) for v in node]
-        return node
-
-    return walk(schema)
+SUBMIT_TOOL = submit_tool(
+    "submit_report", "Submit the finished report. Call once, at the end.", StrategistReport
+)
 
 
 def run_strategist(
@@ -96,123 +45,19 @@ def run_strategist(
     tracer: Tracer | None = None,
     workspace_id: str | None = None,
     model: str = MODEL,
-) -> AgentRun:
-    """`create` is `anthropic_client.beta.messages.create` (or a fake in tests)."""
-    tracer = tracer or NullTracer()
-    tools = SnapshotTools(snapshots, creative_of_ad)
-    submit = {**SUBMIT_TOOL, "input_schema": _inline_refs(SUBMIT_TOOL["input_schema"])}
-    messages: list[dict[str, Any]] = [
-        {
-            "role": "user",
-            "content": "Write the strategist report for this account. Analyses exist for windows: "
-            + ", ".join(sorted(snapshots))
-            + ".",
-        }
-    ]
-    run = AgentRun(report=None, grounding=None, attempts=0, turns=0)  # type: ignore[arg-type]
-
-    for _ in range(MAX_TURNS):
-        started = time.monotonic()
-        resp = create(
-            model=model,
-            max_tokens=16000,
-            system=SYSTEM,
-            tools=[*TOOL_DEFS, submit],
-            tool_choice={"type": "auto"},
-            output_config={"effort": "high"},
-            messages=messages,
-            betas=["server-side-fallback-2026-07-01"],
-            fallbacks="default",
-        )
-        run.turns += 1
-        usage = _attr(resp, "usage")
-        tin, tout = (
-            int(_attr(usage, "input_tokens", 0) or 0),
-            int(_attr(usage, "output_tokens", 0) or 0),
-        )
-        run.input_tokens += tin
-        run.output_tokens += tout
-        cost = tin / 1e6 * PRICE_PER_MTOK[0] + tout / 1e6 * PRICE_PER_MTOK[1]
-        run.cost_usd += cost
-        tracer.record(
-            {
-                "name": "strategist_turn",
-                "model": model,
-                "workspace_id": workspace_id,
-                "input_tokens": tin,
-                "output_tokens": tout,
-                "cost_usd": round(cost, 6),
-                "latency_s": round(time.monotonic() - started, 3),
-                "stop_reason": _attr(resp, "stop_reason"),
-            }
-        )
-
-        stop = _attr(resp, "stop_reason")
-        if stop == "refusal":
-            raise AgentError("the model declined to write this report")
-        content = list(_attr(resp, "content", []))
-        messages.append({"role": "assistant", "content": content})
-        tool_uses = [b for b in content if _attr(b, "type") == "tool_use"]
-        if not tool_uses:
-            if stop == "max_tokens":
-                raise AgentError("ran out of output tokens before submitting the report")
-            messages.append({"role": "user", "content": "Please finish by calling submit_report."})
-            continue
-
-        results: list[dict[str, Any]] = []
-        submitted: tuple[Any, StrategistReport] | None = None
-        for block in tool_uses:
-            name, args, bid = _attr(block, "name"), _attr(block, "input") or {}, _attr(block, "id")
-            run.tool_calls.append(name)
-            if name == "submit_report":
-                try:
-                    submitted = (bid, StrategistReport.model_validate(args))
-                except ValidationError as exc:
-                    results.append(
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": bid,
-                            "is_error": True,
-                            "content": f"The report does not match the schema: {exc}"[:3000],
-                        }
-                    )
-                continue
-            try:
-                out = run_tool(tools, name, dict(args))
-                results.append(
-                    {"type": "tool_result", "tool_use_id": bid, "content": json.dumps(out)}
-                )
-            except (ValueError, TypeError) as exc:
-                results.append(
-                    {
-                        "type": "tool_result",
-                        "tool_use_id": bid,
-                        "is_error": True,
-                        "content": str(exc),
-                    }
-                )
-
-        if submitted:
-            bid, report = submitted
-            run.attempts += 1
-            grounding = validate(report, snapshots, ad_refs)
-            run.report, run.grounding = report, grounding
-            if grounding.passed or run.attempts >= 2:
-                return run
-            issues = "\n".join(
-                f"- [{p.section}] {p.claim!r}: {p.issue}" for p in grounding.problems[:20]
-            )
-            results.append(
-                {
-                    "type": "tool_result",
-                    "tool_use_id": bid,
-                    "is_error": True,
-                    "content": "Grounding check failed. Fix these citations using values exactly as the tools "
-                    f"return them (call tools again if needed), then call submit_report again:\n{issues}",
-                }
-            )
-        messages.append({"role": "user", "content": results})
-
-    if run.report is not None:
-        return run
-    raise AgentError(f"no report after {MAX_TURNS} turns")
+) -> AgentRun[StrategistReport]:
+    return run_agent(
+        create,
+        name="strategist",
+        system=SYSTEM,
+        output=StrategistReport,
+        submit=SUBMIT_TOOL,
+        user_message="Write the strategist report for this account. Analyses exist for windows: "
+        + ", ".join(sorted(snapshots))
+        + ".",
+        tools=SnapshotTools(snapshots, creative_of_ad),
+        validate=lambda r: validate(r, snapshots, ad_refs),
+        tracer=tracer,
+        workspace_id=workspace_id,
+        model=model,
+    )

@@ -60,3 +60,6 @@ class StrategistReport(BaseModel):
             for s in ("working", "double_down", "cut", "missing_concepts")
             for c in getattr(self, s)
         ]
+
+    def citable(self) -> list[tuple[str, str, list[str], list[MetricCite]]]:
+        return [(s, c.claim, c.ad_ids, c.metrics) for s, c in self.claims()]

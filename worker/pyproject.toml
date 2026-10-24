@@ -45,6 +45,7 @@ ignore = ["ANN401"]
 # prompts and tool descriptions are long natural-language strings
 "src/mosaic/agents/*.py" = ["E501"]
 "tests/test_strategist.py" = ["E501"]
+"tests/test_briefs.py" = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -6,9 +6,11 @@ number must match the analysis within rounding.
 
 from __future__ import annotations
 
+from typing import Protocol
+
 from pydantic import BaseModel
 
-from mosaic.agents.report import Claim, MetricCite, StrategistReport
+from mosaic.agents.report import MetricCite
 from mosaic.analytics.compute import Snapshot
 
 REL_TOL = 0.01  # 1% relative, or the rounding the model applied, whichever is looser
@@ -88,33 +90,43 @@ def truths_for(cite: MetricCite, snaps: dict[str, Snapshot]) -> list[float] | st
     return f'entity must be "ad:<ref>", "tag:<dimension>=<value>", "concepts" or "account", got {cite.entity!r}'
 
 
+class Citable(Protocol):
+    def citable(self) -> list[tuple[str, str, list[str], list[MetricCite]]]: ...
+
+
 def validate(
-    report: StrategistReport, snaps: dict[str, Snapshot], workspace_ad_refs: set[str]
+    report: Citable, snaps: dict[str, Snapshot], workspace_ad_refs: set[str]
 ) -> GroundingResult:
+    """report.citable() yields (section, text, ad_ids, metrics) for everything it asserts."""
     problems: list[Problem] = []
     n_numbers = n_ads = 0
-    for section, c in report.claims():
-        problems.extend(_check_claim(section, c, snaps, workspace_ad_refs))
-        n_numbers += len(c.metrics)
-        n_ads += len(c.ad_ids)
+    for section, text, ad_ids, metrics in report.citable():
+        problems.extend(_check(section, text, ad_ids, metrics, snaps, workspace_ad_refs))
+        n_numbers += len(metrics)
+        n_ads += len(ad_ids)
     return GroundingResult(
         passed=not problems, checked_numbers=n_numbers, checked_ads=n_ads, problems=problems
     )
 
 
-def _check_claim(
-    section: str, c: Claim, snaps: dict[str, Snapshot], refs: set[str]
+def _check(
+    section: str,
+    text: str,
+    ad_ids: list[str],
+    metrics: list[MetricCite],
+    snaps: dict[str, Snapshot],
+    refs: set[str],
 ) -> list[Problem]:
     out = []
-    short = c.claim[:80]
-    for ad in c.ad_ids:
+    short = text[:80]
+    for ad in ad_ids:
         if ad not in refs:
             out.append(
                 Problem(
                     section=section, claim=short, issue=f"ad {ad} does not exist in this workspace"
                 )
             )
-    for cite in c.metrics:
+    for cite in metrics:
         truths = truths_for(cite, snaps)
         if isinstance(truths, str):
             out.append(Problem(section=section, claim=short, issue=truths))

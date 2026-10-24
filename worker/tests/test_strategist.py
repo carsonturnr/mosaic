@@ -7,7 +7,7 @@ import pytest
 from mosaic.agents.grounding import matches, validate
 from mosaic.agents.report import StrategistReport
 from mosaic.agents.run import generate_report
-from mosaic.agents.strategist import SUBMIT_TOOL, _inline_refs, run_strategist
+from mosaic.agents.strategist import SUBMIT_TOOL, run_strategist
 from mosaic.agents.tools import TOOL_DEFS, SnapshotTools, run_tool
 from mosaic.analytics.run import latest_snapshot
 from mosaic.seed import seed
@@ -52,7 +52,7 @@ def test_tools_return_json_and_reject_bad_input(ws: tuple[MemoryStore, str]) -> 
 
 
 def test_submit_schema_is_strict_compatible() -> None:
-    s = json.dumps(_inline_refs(SUBMIT_TOOL["input_schema"]))
+    s = json.dumps(SUBMIT_TOOL["input_schema"])
     assert "$ref" not in s and "$defs" not in s and '"additionalProperties": false' in s
 
 
