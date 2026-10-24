@@ -4,6 +4,7 @@ import { WorkspaceNav } from '../components/WorkspaceNav'
 import { workerApi } from '../lib/api'
 import { supabase } from '../lib/supabase'
 import { useAsync } from '../lib/useAsync'
+import { useWorkspaceMode } from '../lib/workspaceBase'
 
 // Mirrors worker/src/mosaic/agents/briefs.py
 interface Beat { seconds: string; visual: string; voiceover: string; on_screen_text: string }
@@ -46,6 +47,7 @@ function download(name: string, text: string) {
 
 export function Briefs() {
   const { id = '' } = useParams<{ id: string }>()
+  const { base, readOnly } = useWorkspaceMode()
   const data = useAsync(() => load(id), [id])
   const [request, setRequest] = useState('')
   const [busy, setBusy] = useState(false)
@@ -71,6 +73,7 @@ export function Briefs() {
     <main className="mx-auto max-w-4xl p-6">
       <WorkspaceNav id={id} name={data.data?.name ?? undefined} />
 
+      {!readOnly && (
       <section className="mb-8 rounded-lg border border-neutral-200 p-4">
         <label className="flex flex-col gap-1.5 text-sm">
           <span className="font-medium">What should the next round focus on? <span className="font-normal text-neutral-500">(optional)</span></span>
@@ -89,9 +92,10 @@ export function Briefs() {
         </div>
         {error && <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}
       </section>
+      )}
 
       {data.loading && !data.data && <p className="text-sm text-neutral-500">Loading…</p>}
-      {data.data && !set && <p className="text-sm text-neutral-600">No briefs yet.</p>}
+      {data.data && !set && <p className="text-sm text-neutral-600">{readOnly ? 'No briefs have been written for this demo yet.' : 'No briefs yet.'}</p>}
 
       {row && set && (
         <>
@@ -138,7 +142,7 @@ export function Briefs() {
                     {b.based_on_ads.map((ref) => {
                       const adId = data.data!.byRef.get(ref)
                       return adId ? (
-                        <Link key={ref} to={`/app/w/${id}/ads/${adId}`} className="rounded border border-neutral-300 px-1.5 font-mono hover:bg-neutral-50">{ref}</Link>
+                        <Link key={ref} to={`${base}/w/${id}/ads/${adId}`} className="rounded border border-neutral-300 px-1.5 font-mono hover:bg-neutral-50">{ref}</Link>
                       ) : <span key={ref} className="font-mono text-red-700">{ref}</span>
                     })}
                   </p>

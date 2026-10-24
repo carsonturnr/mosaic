@@ -6,6 +6,7 @@ import { loginWithFacebook } from '../lib/meta'
 import { supabase } from '../lib/supabase'
 import type { DataSource, SyncRun, Workspace as WorkspaceRow } from '../lib/types'
 import { useAsync } from '../lib/useAsync'
+import { useWorkspaceMode } from '../lib/workspaceBase'
 
 interface Counts {
   campaigns: number
@@ -22,6 +23,7 @@ interface Overview {
 
 export function Workspace() {
   const { id } = useParams<{ id: string }>()
+  const { readOnly } = useWorkspaceMode()
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [fbToken, setFbToken] = useState<string | null>(null)
@@ -131,6 +133,7 @@ export function Workspace() {
             ))}
           </ul>
         )}
+        {!readOnly && (
         <div className="mt-3 flex gap-2">
           <button
             type="button"
@@ -149,6 +152,7 @@ export function Workspace() {
             {busy === 'connect' ? 'Connecting…' : 'Connect Meta ad account'}
           </button>
         </div>
+        )}
         {adAccounts.length > 0 && (
           <ul className="mt-3 divide-y divide-neutral-200 rounded border border-neutral-200 text-sm">
             {adAccounts.map((a) => (

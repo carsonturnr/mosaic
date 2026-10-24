@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase'
 import type { Tables } from '../lib/types'
 import { fetchAdCustomTags, fetchCustomTags, setAdCustomTag } from '../lib/taxonomy'
 import { useAsync } from '../lib/useAsync'
+import { useWorkspaceMode } from '../lib/workspaceBase'
 
 type Daily = Pick<
   Tables<'ad_daily_metrics'>,
@@ -99,6 +100,7 @@ const DIMENSION_LABEL: Record<string, string> = {
 
 export function AdDetail() {
   const { id = '', adId = '' } = useParams<{ id: string; adId: string }>()
+  const { base, readOnly } = useWorkspaceMode()
   const { data, error, loading } = useAsync(() => loadDetail(id, adId), [id, adId])
   const [metric, setMetric] = useState<ChartMetric>('spend')
   const custom = useAsync(async () => {
@@ -132,7 +134,7 @@ export function AdDetail() {
   return (
     <main className="mx-auto max-w-6xl p-6">
       <WorkspaceNav id={id} name={data.workspaceName} />
-      <Link to={`/app/w/${id}/library`} className="text-sm text-neutral-500 hover:text-neutral-900">
+      <Link to={`${base}/w/${id}/library`} className="text-sm text-neutral-500 hover:text-neutral-900">
         ← Library
       </Link>
 
@@ -143,6 +145,8 @@ export function AdDetail() {
               <video src={mediaUrl} poster={poster} controls playsInline className="h-full w-full bg-black object-contain" />
             ) : mediaUrl ? (
               <img src={mediaUrl} alt="" className="h-full w-full object-contain" />
+            ) : poster ? (
+              <img src={poster} alt="Video poster" className="h-full w-full object-contain" />
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-1 p-6 text-center text-sm text-neutral-500">
                 <span className="text-3xl text-neutral-400" aria-hidden>{isVideo ? '▶' : '▦'}</span>
@@ -208,6 +212,7 @@ export function AdDetail() {
             <LineChart points={points} format={active.format} tickFormat={active.tick} label={active.label} />
           </div>
 
+          {!readOnly && (
           <div className="mt-8">
             <h3 className="mb-2 text-sm font-medium">Custom tags</h3>
             {custom.data && custom.data.all.length === 0 ? (
@@ -230,6 +235,7 @@ export function AdDetail() {
             )}
             {tagError && <p className="mt-2 text-xs text-red-700">{tagError}</p>}
           </div>
+          )}
 
           <div className="mt-8">
             <h3 className="mb-2 text-sm font-medium">Tags</h3>

@@ -16,6 +16,7 @@ import {
 import { fmt } from '../lib/format'
 import { supabase } from '../lib/supabase'
 import { useAsync } from '../lib/useAsync'
+import { useWorkspaceMode } from '../lib/workspaceBase'
 
 const METRICS: { key: Metric; label: string; format: (v: number) => string; video?: boolean }[] = [
   { key: 'roas', label: 'ROAS', format: (v) => fmt.ratio(v) },
@@ -224,8 +225,9 @@ function Signals({ snap, adsById, workspaceId }: {
   adsById: Map<string, AdStats>
   workspaceId: string
 }) {
+  const { base } = useWorkspaceMode()
   const name = (id: string) => adsById.get(id)?.name ?? id
-  const link = (id: string) => `/app/w/${workspaceId}/ads/${id}`
+  const link = (id: string) => `${base}/w/${workspaceId}/ads/${id}`
   const fatigue = dedupe(snap.fatigue, (f) => f.ad_id)
   const under = dedupe(snap.underfunded, (u) => u.ad_id)
   const outliers = dedupe(snap.outliers.filter((o) => o.metric === 'roas'), (o) => o.ad_id)

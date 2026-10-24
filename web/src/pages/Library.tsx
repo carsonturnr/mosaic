@@ -15,6 +15,7 @@ import {
 import { supabase } from '../lib/supabase'
 import { fetchAdCustomTags, fetchCustomTags, type CustomTag as UserTag } from '../lib/taxonomy'
 import { useAsync } from '../lib/useAsync'
+import { useWorkspaceMode } from '../lib/workspaceBase'
 
 type SortKey = 'spend' | 'roas' | 'ctr' | 'cpa' | 'hook_rate'
 type TypeFilter = 'all' | 'video' | 'image'
@@ -58,6 +59,7 @@ async function loadLibrary(id: string, w: Window): Promise<LibraryData> {
 
 export function Library() {
   const { id = '' } = useParams<{ id: string }>()
+  const { base } = useWorkspaceMode()
   const [win, setWin] = useState<Window>('all')
   const [sort, setSort] = useState<SortKey>('spend')
   const [type, setType] = useState<TypeFilter>('all')
@@ -152,7 +154,7 @@ export function Library() {
       {data && data.ads.length === 0 && (
         <div className="rounded-lg border border-dashed border-neutral-300 p-10 text-center text-sm text-neutral-600">
           No ads yet. Connect a Meta ad account on the{' '}
-          <Link to={`/app/w/${id}`} className="underline">Overview</Link> tab and run a sync.
+          <Link to={`${base}/w/${id}`} className="underline">Overview</Link> tab and run a sync.
         </div>
       )}
 
@@ -178,6 +180,7 @@ function AdCard({ ad, tags, thumb, workspaceId, userTags }: {
   thumb: string | undefined
   workspaceId: string
 }) {
+  const { base } = useWorkspaceMode()
   const lowData = ad.impressions < LOW_DATA_IMPRESSIONS
   const chips = (['format', 'hook_type', 'angle'] as const)
     .map((k) => tags?.get(k)?.value)
@@ -186,7 +189,7 @@ function AdCard({ ad, tags, thumb, workspaceId, userTags }: {
 
   return (
     <li className="overflow-hidden rounded-lg border border-neutral-200 bg-white transition hover:border-neutral-400">
-      <Link to={`/app/w/${workspaceId}/ads/${ad.ad_id}`} className="block">
+      <Link to={`${base}/w/${workspaceId}/ads/${ad.ad_id}`} className="block">
         <div className="relative aspect-[4/5] bg-neutral-100">
           {thumb ? (
             <img src={thumb} alt="" className="h-full w-full object-cover" loading="lazy" />

@@ -18,6 +18,7 @@ export function SiteHeader() {
           <a href="/#product" className="transition hover:text-[var(--site-text)]">Product</a>
           <a href="/#how" className="transition hover:text-[var(--site-text)]">How it works</a>
           <a href="/#grounded" className="transition hover:text-[var(--site-text)]">Grounding</a>
+          <a href="/demo" className="transition hover:text-[var(--site-text)]">Live demo</a>
           <a href={REPO} className="transition hover:text-[var(--site-text)]">GitHub</a>
         </nav>
         <div className="flex items-center gap-2 text-sm">

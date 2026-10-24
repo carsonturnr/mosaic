@@ -5,6 +5,7 @@ import { workerApi } from '../lib/api'
 import { fmt } from '../lib/format'
 import { supabase } from '../lib/supabase'
 import { useAsync } from '../lib/useAsync'
+import { useWorkspaceMode } from '../lib/workspaceBase'
 
 // Mirrors worker/src/mosaic/agents/report.py
 interface Cite { entity: string; metric: string; value: number; window: string }
@@ -54,6 +55,7 @@ async function load(id: string) {
 
 export function Report() {
   const { id = '' } = useParams<{ id: string }>()
+  const { base, readOnly } = useWorkspaceMode()
   const data = useAsync(() => load(id), [id])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -89,17 +91,19 @@ export function Report() {
             </p>
           )}
         </div>
-        <button type="button" onClick={() => void generate()} disabled={busy}
-          className="rounded-md bg-neutral-900 px-3 py-2 text-sm text-white disabled:opacity-50">
-          {busy ? 'Writing report… (about a minute)' : r ? 'Regenerate' : 'Generate report'}
-        </button>
+        {!readOnly && (
+          <button type="button" onClick={() => void generate()} disabled={busy}
+            className="rounded-md bg-neutral-900 px-3 py-2 text-sm text-white disabled:opacity-50">
+            {busy ? 'Writing report… (about a minute)' : r ? 'Regenerate' : 'Generate report'}
+          </button>
+        )}
       </div>
 
       {error && <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}
       {data.loading && !data.data && <p className="text-sm text-neutral-500">Loading…</p>}
       {data.data && !r && (
         <div className="rounded-lg border border-dashed border-neutral-300 p-10 text-center text-sm text-neutral-600">
-          No report yet. Generate one from the latest analysis.
+          {readOnly ? 'No report has been written for this demo yet.' : 'No report yet. Generate one from the latest analysis.'}
         </div>
       )}
 
@@ -139,7 +143,7 @@ export function Report() {
                           {c.ad_ids.map((ref) => {
                             const ad = data.data!.byRef.get(ref)
                             return ad ? (
-                              <Link key={ref} to={`/app/w/${id}/ads/${ad.id}`} title={ad.name}
+                              <Link key={ref} to={`${base}/w/${id}/ads/${ad.id}`} title={ad.name}
                                 className="rounded border border-neutral-300 px-1.5 py-0.5 font-mono hover:bg-neutral-50">{ref}</Link>
                             ) : (
                               <span key={ref} className="rounded border border-red-200 px-1.5 py-0.5 font-mono text-red-700">{ref}</span>
