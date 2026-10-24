@@ -7,6 +7,7 @@ import { Settings } from './pages/Settings'
 import { SignIn } from './pages/SignIn'
 import { Terms } from './pages/Terms'
 import { AdDetail } from './pages/AdDetail'
+import { Analysis } from './pages/Analysis'
 import { Library } from './pages/Library'
 import { Workspace } from './pages/Workspace'
 import { Workspaces } from './pages/Workspaces'
@@ -25,6 +26,7 @@ export default function App() {
             <Route path="/app/w/:id" element={<Workspace />} />
             <Route path="/app/w/:id/library" element={<Library />} />
             <Route path="/app/w/:id/ads/:adId" element={<AdDetail />} />
+            <Route path="/app/w/:id/analysis" element={<Analysis />} />
             <Route path="/app/w/:id/settings" element={<Settings />} />
           </Route>
         </Routes>

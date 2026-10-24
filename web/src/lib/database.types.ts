@@ -243,6 +243,44 @@ export type Database = {
           },
         ]
       }
+      analysis_snapshots: {
+        Row: {
+          computed_at: string
+          id: string
+          payload: Json
+          since: string
+          until: string
+          window_key: string
+          workspace_id: string
+        }
+        Insert: {
+          computed_at?: string
+          id?: string
+          payload: Json
+          since: string
+          until: string
+          window_key: string
+          workspace_id: string
+        }
+        Update: {
+          computed_at?: string
+          id?: string
+          payload?: Json
+          since?: string
+          until?: string
+          window_key?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analysis_snapshots_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaigns: {
         Row: {
           created_time: string | null
