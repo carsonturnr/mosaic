@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useParams } from 'react-router-dom'
+import { BrandMemory } from '../components/BrandMemory'
 import { WorkspaceNav } from '../components/WorkspaceNav'
 import { supabase } from '../lib/supabase'
 import {
@@ -139,6 +140,7 @@ export function Settings() {
           ))}
         </ul>
       </section>
+      <BrandMemory workspaceId={id} />
     </main>
   )
 }

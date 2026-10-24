@@ -281,6 +281,35 @@ export type Database = {
           },
         ]
       }
+      brand_memory: {
+        Row: {
+          guidelines: string
+          learnings: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          guidelines?: string
+          learnings?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          guidelines?: string
+          learnings?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_memory_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaigns: {
         Row: {
           created_time: string | null
@@ -354,23 +383,29 @@ export type Database = {
       }
       concept_clusters: {
         Row: {
+          diversity: number | null
           id: string
           label: string | null
           run_at: string
+          spend: number | null
           summary: string | null
           workspace_id: string
         }
         Insert: {
+          diversity?: number | null
           id?: string
           label?: string | null
           run_at?: string
+          spend?: number | null
           summary?: string | null
           workspace_id: string
         }
         Update: {
+          diversity?: number | null
           id?: string
           label?: string | null
           run_at?: string
+          spend?: number | null
           summary?: string | null
           workspace_id?: string
         }
@@ -386,6 +421,7 @@ export type Database = {
       }
       creative_embeddings: {
         Row: {
+          content_hash: string | null
           creative_id: string
           embedding: string | null
           id: string
@@ -394,6 +430,7 @@ export type Database = {
           scene_id: string | null
         }
         Insert: {
+          content_hash?: string | null
           creative_id: string
           embedding?: string | null
           id?: string
@@ -402,6 +439,7 @@ export type Database = {
           scene_id?: string | null
         }
         Update: {
+          content_hash?: string | null
           creative_id?: string
           embedding?: string | null
           id?: string

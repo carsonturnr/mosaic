@@ -42,6 +42,8 @@ export interface ReportResult {
 
 export const workerApi = {
   strategistReport: (workspaceId: string) => call<ReportResult>(`/workspaces/${workspaceId}/reports/strategist`),
+  briefs: (workspaceId: string, request?: string) =>
+    call<ReportResult>(`/workspaces/${workspaceId}/reports/briefs`, { request: request ?? null }),
   analyze: (workspaceId: string) => call<unknown>(`/workspaces/${workspaceId}/analyze`),
   refresh: (workspaceId: string) =>
     call<{ runs: SyncRunSummary[] }>(`/workspaces/${workspaceId}/refresh`),
