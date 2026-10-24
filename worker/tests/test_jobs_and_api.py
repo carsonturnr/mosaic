@@ -159,3 +159,11 @@ def test_structure_sync_triggers_perception_only_for_new_creatives() -> None:
     assert not modal_app.needs_perception([{"status": "done", "stats": {"new_creatives": 0}}])
     assert not modal_app.needs_perception([{"status": "failed", "error": "x"}])
     assert not modal_app.needs_perception([])
+
+
+def test_strategist_endpoint_needs_a_key(monkeypatch: Any) -> None:
+    monkeypatch.setenv("WORKER_API_KEY", "k1")
+    store, _ = _store_with_synthetic_source()
+    c = _client(store)
+    r = c.post("/workspaces/ws/reports/strategist", headers={"Authorization": "Bearer k1"})
+    assert r.status_code == 503 and "ANTHROPIC_API_KEY" in r.text

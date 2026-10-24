@@ -40,6 +40,7 @@ class Settings:
     meta_graph_version: str
     meta_sandbox_ad_account_id: str | None
     gemini_api_key: str | None = None
+    anthropic_api_key: str | None = None
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -52,4 +53,5 @@ class Settings:
             meta_graph_version=os.environ.get("META_GRAPH_VERSION", "v26.0"),
             meta_sandbox_ad_account_id=os.environ.get("META_SANDBOX_AD_ACCOUNT_ID") or None,
             gemini_api_key=os.environ.get("GEMINI_API_KEY") or None,
+            anthropic_api_key=os.environ.get("ANTHROPIC_API_KEY") or None,
         )

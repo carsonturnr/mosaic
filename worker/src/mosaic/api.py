@@ -118,6 +118,32 @@ def analyze(workspace_id: str, principal: Auth) -> dict[str, Any]:
     return analyze_workspace(store, workspace_id).model_dump()
 
 
+@app.post("/workspaces/{workspace_id}/reports/strategist")
+def strategist_report(workspace_id: str, principal: Auth) -> dict[str, Any]:
+    store, settings = deps.store_factory(), deps.settings_factory()
+    require_workspace(store, principal, workspace_id)
+    if not settings.anthropic_api_key:
+        raise HTTPException(503, "Reports need ANTHROPIC_API_KEY on the worker")
+    from mosaic.agents.run import anthropic_create, generate_report
+    from mosaic.agents.strategist import AgentError
+
+    try:
+        row, run = generate_report(
+            store, workspace_id, anthropic_create(settings.anthropic_api_key)
+        )
+    except AgentError as exc:
+        raise HTTPException(502, str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    return {
+        "report_id": row["id"],
+        "grounding_passed": run.grounding.passed,
+        "problems": [p.model_dump() for p in run.grounding.problems],
+        "turns": run.turns,
+        "cost_usd": round(run.cost_usd, 4),
+    }
+
+
 class MetaAdAccount(BaseModel):
     id: str
     name: str
