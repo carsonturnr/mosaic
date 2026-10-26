@@ -285,3 +285,35 @@ def test_overloaded_model_leaves_creative_pending(tmp_path: Path) -> None:
     counts = perceive_pending(LLM(Busy(), sleep=lambda _: None), store, storage, "ws")
     assert counts == {"done": 0, "failed": 0, "deferred": 1}
     assert store.select("creatives", id="c3")[0]["perception_status"] == "pending"
+
+
+def test_daily_quota_stops_the_batch_and_defers_the_rest(tmp_path: Path) -> None:
+    from mosaic.llm import QuotaExhausted
+
+    store, storage = MemoryStore(), MemoryStorage()
+    for r in TAXONOMY_ROWS:
+        store.insert("taxonomy_dimensions", r)
+    img = tmp_path / "a.png"
+    img.write_bytes(b"\\x89PNG fake")
+    for i in range(3):
+        storage.upload(f"ws/q{i}/original.png", img, "image/png")
+        store.insert(
+            "creatives",
+            {
+                "id": f"q{i}",
+                "workspace_id": "ws",
+                "type": "image",
+                "storage_path": f"ws/q{i}/original.png",
+                "perception_status": "pending",
+            },
+        )
+    calls = {"n": 0}
+
+    class Capped:
+        def generate(self, req: LLMRequest) -> LLMResponse:
+            calls["n"] += 1
+            raise QuotaExhausted("daily cap")
+
+    counts = perceive_pending(LLM(Capped(), sleep=lambda _: None), store, storage, "ws")
+    assert calls["n"] == 1 and counts == {"done": 0, "failed": 0, "deferred": 3}
+    assert all(c["perception_status"] == "pending" for c in store.tables["creatives"])

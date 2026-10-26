@@ -102,3 +102,16 @@ def test_gemini_provider_uploads_each_file_once_across_retries(tmp_path: Path) -
     p.generate(req)
     p.generate(req)
     assert uploads == [str(f)] and calls["n"] == 2
+
+
+def test_daily_quota_is_not_retried() -> None:
+    from mosaic.llm import QuotaExhausted
+    from mosaic.providers import _retry_delay_s
+
+    assert _retry_delay_s("... 'retryDelay': '46330s' ...") == 46330
+    assert _retry_delay_s("no delay here") == 0
+    sleeps: list[float] = []
+    p = Scripted(QuotaExhausted("daily cap"), '{"answer": 1}')
+    with pytest.raises(QuotaExhausted):
+        LLM(p, sleep=sleeps.append).structured("t", REQ, Out)
+    assert sleeps == [] and len(p.requests) == 1

@@ -52,6 +52,10 @@ class TransientError(RuntimeError):
     """Raise from a provider for rate limits / 5xx so the wrapper backs off."""
 
 
+class QuotaExhausted(TransientError):
+    """A quota that won't reset within minutes (e.g. a daily cap): don't retry now."""
+
+
 class LLMOutputError(RuntimeError):
     def __init__(self, message: str, raw: str) -> None:
         super().__init__(message)
@@ -202,6 +206,8 @@ class LLM:
         for attempt in range(self.max_transient_retries + 1):
             try:
                 return self.provider.generate(req)
+            except QuotaExhausted:
+                raise
             except TransientError:
                 if attempt == self.max_transient_retries:
                     raise

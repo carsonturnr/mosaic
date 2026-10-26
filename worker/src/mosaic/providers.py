@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import re
 import time
 from typing import Any
 
-from mosaic.llm import LLMRequest, LLMResponse, TransientError
+from mosaic.llm import LLMRequest, LLMResponse, QuotaExhausted, TransientError
 
 # USD per 1M tokens (input, output). Update when pricing changes.
 GEMINI_PRICES: dict[str, tuple[float, float]] = {
@@ -56,7 +57,10 @@ class GeminiProvider:
                 model=req.model, contents=parts, config=config
             )
         except errors.APIError as exc:
-            if getattr(exc, "code", None) in (429, 500, 502, 503, 504):
+            code = getattr(exc, "code", None)
+            if code == 429 and _retry_delay_s(str(exc)) > 120:
+                raise QuotaExhausted(str(exc)) from exc
+            if code in (429, 500, 502, 503, 504):
                 raise TransientError(str(exc)) from exc
             raise
         except Exception as exc:
@@ -125,3 +129,9 @@ class GeminiEmbedder:
                 norm = sum(x * x for x in v) ** 0.5 or 1.0
                 out.append([x / norm for x in v])
         return out
+
+
+def _retry_delay_s(message: str) -> float:
+    """Gemini puts a RetryInfo delay like '46330s' in quota errors; 0 if absent."""
+    m = re.search(r"retryDelay'?\"?:\s*'?\"?(\d+(?:\.\d+)?)s", message)
+    return float(m.group(1)) if m else 0.0
