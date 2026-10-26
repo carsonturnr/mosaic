@@ -1,6 +1,8 @@
 """Seed a Supabase workspace with the synthetic account.
 
     uv run python -m mosaic.seed --owner-email you@example.com [--seed 42] [--n-ads 24]
+    uv run python -m mosaic.seed --owner-email you@example.com --demo
+    uv run python -m mosaic.seed --owner-email you@example.com --local media/brand tags.json
 
 Creates the owner (if missing), a workspace, a sandbox_synthetic data source, syncs
 structure + 90 days of metrics, and writes the ground-truth tags as creative_tags
@@ -201,8 +203,101 @@ def seed_demo(
     }
 
 
+def seed_local(
+    store: Store,
+    storage: Any,
+    owner_id: str,
+    folder: Any,
+    perception: dict[str, Any],
+    *,
+    name: str,
+    guidelines: str = "",
+    embedder: Any | None = None,
+) -> dict[str, Any]:
+    """A private workspace of real ad files, their stored tags, and synthetic performance.
+
+    Never a demo: the files may be another brand's ads, so the workspace stays owner-only.
+    """
+    import tempfile
+    from datetime import timedelta
+    from pathlib import Path
+
+    from mosaic.analytics.run import analyze_workspace
+    from mosaic.datasources.local import LocalSource
+    from mosaic.media import ingest_pending
+    from mosaic.perception.pipeline import save_perception
+    from mosaic.perception.scenes import detect_scenes
+
+    ws_id = ensure_workspace(store, owner_id, name)
+    store.update("workspaces", {"is_demo": False}, id=ws_id)
+    ds_rows = store.select("data_sources", "id,created_at", workspace_id=ws_id, kind="local")
+    ds = (
+        ds_rows[0]
+        if ds_rows
+        else store.insert("data_sources", {"workspace_id": ws_id, "kind": "local"})
+    )
+    start = demo_start(ds.get("created_at"))
+    source = LocalSource(Path(folder), perception, start_date=start, days=DEMO_DAYS)
+    structure = run_job(
+        store, ds["id"], "seed_structure", lambda: sync_structure(source, ws_id, store)
+    )
+    metrics = run_job(
+        store,
+        ds["id"],
+        "seed_metrics",
+        lambda: sync_metrics(source, ws_id, store, start, start + timedelta(days=DEMO_DAYS - 1)),
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        ingested = ingest_pending(source, store, storage, ws_id, Path(tmp))
+        imported = 0
+        for c in store.select("creatives", "*", workspace_id=ws_id):
+            result, model = source.perception(c["external_id"])
+            local = source.download_media(source.get_creative(c["external_id"])).path
+            duration = c.get("duration_s")
+            scenes = (
+                detect_scenes(local, duration_s=float(duration) if duration else None)
+                if c["type"] == "video"
+                else []
+            )
+            store.delete("creative_tags", creative_id=c["id"], source="ai")
+            save_perception(
+                store,
+                storage,
+                c,
+                local,
+                scenes,
+                result,
+                model,
+                c.get("duration_s"),
+                Path(tmp) / c["id"],
+            )
+            imported += 1
+    if guidelines:
+        store.upsert(
+            "brand_memory",
+            [{"workspace_id": ws_id, "guidelines": guidelines, "learnings": ""}],
+            on_conflict="workspace_id",
+        )
+    if embedder is not None:
+        from mosaic.perception.embed import embed_scripts
+
+        run_job(store, ds["id"], "embed", lambda: embed_scripts(store, embedder, ws_id))
+    analysis = run_job(store, ds["id"], "analyze", lambda: analyze_workspace(store, ws_id))
+    return {
+        "workspace_id": ws_id,
+        "data_source_id": ds["id"],
+        "start": start.isoformat(),
+        "structure": structure["stats"],
+        "metrics": metrics["stats"],
+        "uploaded": len(ingested),
+        "perception_imported": imported,
+        "winning_hook": source.account.winning_hook,
+        "analysis": analysis["stats"],
+    }
+
+
 def demo_start(created_at: Any) -> date:
-    """The demo's 90 days end the day its data source was created (stable across re-runs)."""
+    """The 90 days end the day the data source was created (stable across re-runs)."""
     from datetime import UTC, datetime, timedelta
 
     if created_at:
@@ -227,11 +322,40 @@ def main() -> None:
     parser.add_argument(
         "--demo", action="store_true", help="seed the public Driftwell demo workspace"
     )
+    parser.add_argument(
+        "--local",
+        nargs=2,
+        metavar=("FOLDER", "PERCEPTION_JSON"),
+        help="seed a private workspace from ad files and their stored tagging results",
+    )
+    parser.add_argument("--guidelines", default="", help="brand guidelines for --local")
     args = parser.parse_args()
 
     settings = Settings.from_env()
     store = SupabaseStore(settings.supabase_url, settings.supabase_service_role_key)
     owner_id = ensure_owner(store.client, args.owner_email)
+    if args.local:
+        import json
+        from pathlib import Path
+
+        from mosaic.media import SupabaseStorage
+        from mosaic.providers import GeminiEmbedder
+
+        folder, results = Path(args.local[0]), json.loads(Path(args.local[1]).read_text())
+        embedder = GeminiEmbedder(settings.gemini_api_key) if settings.gemini_api_key else None
+        name = args.workspace_name if args.workspace_name != WORKSPACE_NAME else folder.name
+        for k, v in seed_local(
+            store,
+            SupabaseStorage(store.client),
+            owner_id,
+            folder,
+            results,
+            name=name,
+            guidelines=args.guidelines,
+            embedder=embedder,
+        ).items():
+            print(f"{k}: {v}")
+        return
     if args.demo:
         from mosaic.media import SupabaseStorage
         from mosaic.providers import GeminiEmbedder

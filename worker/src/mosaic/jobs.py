@@ -39,7 +39,14 @@ def build_source(ds: Row, settings: Settings, store: Store) -> DataSource:
         from mosaic.seed import DEMO_DAYS, demo_start
 
         return DemoSource(start_date=demo_start(ds.get("created_at")), days=DEMO_DAYS)
+    if kind == "local":
+        raise ValueError("local data sources are seeded from files once and never synced")
     raise ValueError(f"unknown data source kind {kind!r}")
+
+
+def is_synced(ds: Row) -> bool:
+    """Local sources are a fixed snapshot of files; there is nothing to pull."""
+    return ds["kind"] != "local"
 
 
 def _today() -> date:
@@ -111,7 +118,7 @@ def backfill(store: Store, settings: Settings, ds: Row, days: int = BACKFILL_DAY
 def refresh(store: Store, settings: Settings, workspace_id: str) -> list[Row]:
     out: list[Row] = []
     sources = store.select("data_sources", "*", workspace_id=workspace_id)
-    for ds in sources:
+    for ds in [d for d in sources if is_synced(d)]:
         out.append(structure(store, settings, ds))
         today = _today()
         out.append(metrics(store, settings, ds, "today_kpis", today - timedelta(days=1), today))
@@ -124,7 +131,7 @@ def for_all_sources(store: Store, settings: Settings, job: str) -> list[dict[str
     """Run one job across every data source; one account's failure never stops the rest."""
     fn = {"structure": structure, "today_kpis": today_kpis, "restatement": restatement}[job]
     results: list[dict[str, Any]] = []
-    for ds in store.select("data_sources", "*"):
+    for ds in [d for d in store.select("data_sources", "*") if is_synced(d)]:
         try:
             run = fn(store, settings, ds)
             results.append(

@@ -45,55 +45,17 @@ def perceive_creative(
             local = storage.download(creative["storage_path"], work / f"original.{ext}")
             is_video = creative["type"] == "video"
             duration = creative.get("duration_s") or (probe(local).duration_s if is_video else None)
-
-            scenes: list[SceneSpan] = []
-            scene_ids: dict[int, str] = {}
-            if is_video:
-                scenes = detect_scenes(local, duration_s=float(duration) if duration else None)
-                frames = keyframes_for(local, scenes, work / "kf")
-                prefix = creative["storage_path"].rsplit("/", 1)[0]
-                store.delete("scenes", creative_id=cid)
-                for s in scenes:
-                    kf_path = f"{prefix}/scene_{s.idx:03d}.jpg"
-                    storage.upload(kf_path, frames[s.idx], "image/jpeg")
-                    row = store.insert(
-                        "scenes",
-                        {
-                            "creative_id": cid,
-                            "idx": s.idx,
-                            "start_s": s.start_s,
-                            "end_s": s.end_s,
-                            "keyframe_path": kf_path,
-                        },
-                    )
-                    scene_ids[s.idx] = row["id"]
-
+            scenes = (
+                detect_scenes(local, duration_s=float(duration) if duration else None)
+                if is_video
+                else []
+            )
             taxonomy = load_taxonomy(store, creative["workspace_id"])
             media = MediaPart(local, MIME.get(ext, "application/octet-stream"))
             result = tag_creative(llm, taxonomy, creative, media, scenes, model=model)
-
-        for note in result.scenes:
-            if note.idx in scene_ids:
-                store.update(
-                    "scenes",
-                    {
-                        "transcript": note.transcript,
-                        "on_screen_text": note.on_screen_text,
-                        "visual_description": note.visual_description,
-                        "broll_type": note.broll_type,
-                    },
-                    id=scene_ids[note.idx],
-                )
-        store.delete("creative_tags", creative_id=cid, source="ai", model=model)
-        for row in tag_rows(
-            cid,
-            result,
-            scene_ids,
-            model,
-            length_bucket(float(duration) if duration else None, is_video),
-        ):
-            store.insert("creative_tags", row)
-        store.update("creatives", {"perception_status": "done"}, id=cid)
+            save_perception(
+                store, storage, creative, local, scenes, result, model, duration, work / "kf"
+            )
         return result
     except LLMOutputError:
         store.update("creatives", {"perception_status": "failed"}, id=cid)
@@ -109,6 +71,67 @@ def perceive_creative(
     except Exception:
         store.update("creatives", {"perception_status": "failed"}, id=cid)
         raise
+
+
+def save_perception(
+    store: Store,
+    storage: Storage,
+    creative: Row,
+    local: Path,
+    scenes: list[SceneSpan],
+    result: CreativeTagging,
+    model: str,
+    duration: float | None,
+    work: Path,
+) -> None:
+    """Write scenes (with keyframes), scene notes and AI tags, then mark the creative done.
+
+    Replaces the creative's scenes and this model's AI tags; user tags are never touched.
+    A video without a thumbnail gets its first keyframe as the poster.
+    """
+    cid = creative["id"]
+    is_video = creative["type"] == "video"
+    notes = {n.idx: n for n in result.scenes}
+    scene_ids: dict[int, str] = {}
+    store.delete("scenes", creative_id=cid)
+    if scenes:
+        frames = keyframes_for(local, scenes, work)
+        prefix = creative["storage_path"].rsplit("/", 1)[0]
+        for s in scenes:
+            kf_path = f"{prefix}/scene_{s.idx:03d}.jpg"
+            storage.upload(kf_path, frames[s.idx], "image/jpeg")
+            note = notes.get(s.idx)
+            row = store.insert(
+                "scenes",
+                {
+                    "creative_id": cid,
+                    "idx": s.idx,
+                    "start_s": s.start_s,
+                    "end_s": s.end_s,
+                    "keyframe_path": kf_path,
+                    "transcript": note.transcript if note else None,
+                    "on_screen_text": note.on_screen_text if note else None,
+                    "visual_description": note.visual_description if note else None,
+                    "broll_type": note.broll_type if note else None,
+                },
+            )
+            scene_ids[s.idx] = row["id"]
+    store.delete("creative_tags", creative_id=cid, source="ai", model=model)
+    for row in tag_rows(
+        cid,
+        result,
+        scene_ids,
+        model,
+        length_bucket(float(duration) if duration else None, is_video),
+    ):
+        store.insert("creative_tags", row)
+    values: Row = {"perception_status": "done"}
+    if not creative.get("thumbnail_path"):
+        if not is_video:
+            values["thumbnail_path"] = creative["storage_path"]
+        elif scenes:
+            values["thumbnail_path"] = f"{creative['storage_path'].rsplit('/', 1)[0]}/scene_000.jpg"
+    store.update("creatives", values, id=cid)
 
 
 def perceive_pending(

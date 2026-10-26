@@ -111,7 +111,6 @@ def main() -> None:
         tags = tag_creative(llm, DEFAULT_TAXONOMY, creative, MediaPart(f, MIME[ext]), scenes)
         results[f.name] = {
             "length_bucket": length_bucket(duration, is_video),
-            "scenes": [[s.start_s, s.end_s] for s in scenes],
             **tags.model_dump(),
         }
         print(
