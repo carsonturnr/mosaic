@@ -181,6 +181,19 @@ def run_agent[T: BaseModel](
             run.attempts += 1
             run.report, run.grounding = report, validate(report)
             if run.grounding.passed or run.attempts >= 2:
+                tracer.record(
+                    {
+                        "name": f"{name}_done",
+                        "workspace_id": workspace_id,
+                        "turns": run.turns,
+                        "attempts": run.attempts,
+                        "grounding_passed": run.grounding.passed,
+                        "cost_usd": round(run.cost_usd, 4),
+                    }
+                )
+                flush = getattr(tracer, "flush", None)
+                if callable(flush):
+                    flush()
                 return run
             issues = "\n".join(
                 f"- [{p.section}] {p.claim!r}: {p.issue}" for p in run.grounding.problems[:20]

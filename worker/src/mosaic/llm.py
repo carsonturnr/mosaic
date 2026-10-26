@@ -121,6 +121,10 @@ class LangfuseTracer:
             metadata={k: v for k, v in event.items() if k not in {"prompt", "output"}},
         )
 
+    def flush(self) -> None:
+        """Langfuse batches events; call at the end of a run so none are lost."""
+        self._lf.flush()
+
 
 @dataclass
 class LLM:
