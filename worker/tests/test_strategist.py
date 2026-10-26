@@ -193,3 +193,10 @@ def test_schema_error_is_returned_to_the_model(ws: tuple[MemoryStore, str]) -> N
     )
     assert run.grounding.passed
     assert "does not match the schema" in fake.requests[1]["messages"][-1]["content"][0]["content"]
+
+
+def test_strategist_required_fields_are_declared() -> None:
+
+    schema = SUBMIT_TOOL["input_schema"]
+    claim = schema["properties"]["working"]["items"]
+    assert set(claim["required"]) <= set(claim["properties"])

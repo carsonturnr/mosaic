@@ -48,10 +48,20 @@ def inline_refs(schema: dict[str, Any]) -> dict[str, Any]:
     defs = schema.get("$defs", {})
 
     def walk(node: Any) -> Any:
+        """Walk a schema node. Pydantic's "title" annotations are dropped, but the keys
+        of a "properties" map are field names and are always kept (a field may be
+        called "title")."""
         if isinstance(node, dict):
             if "$ref" in node:
                 return walk(defs[node["$ref"].split("/")[-1]])
-            return {k: walk(v) for k, v in node.items() if k not in ("$defs", "title")}
+            out: dict[str, Any] = {}
+            for k, v in node.items():
+                if k in ("$defs", "title"):
+                    continue
+                out[k] = (
+                    {name: walk(sub) for name, sub in v.items()} if k == "properties" else walk(v)
+                )
+            return out
         if isinstance(node, list):
             return [walk(v) for v in node]
         return node
