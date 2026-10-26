@@ -17,11 +17,22 @@ GEMINI_PRICES: dict[str, tuple[float, float]] = {
 class GeminiProvider:
     """Gemini via google-genai. Video/images are uploaded through the Files API."""
 
+    REQUEST_TIMEOUT_MS = 180_000
+
     def __init__(self, api_key: str, client: Any | None = None) -> None:
         if client is None:
             from google import genai
+            from google.genai import types
 
-            client = genai.Client(api_key=api_key)
+            # A bounded timeout and no SDK-level retries: mosaic.llm owns the backoff,
+            # so a stalled request fails fast instead of hanging a batch for hours.
+            client = genai.Client(
+                api_key=api_key,
+                http_options=types.HttpOptions(
+                    timeout=self.REQUEST_TIMEOUT_MS,
+                    retry_options=types.HttpRetryOptions(attempts=1),
+                ),
+            )
         self._client = client
         # (path, mtime, size) -> uploaded file, so retries don't re-upload large videos.
         # Gemini keeps uploads for 48 hours; a process never lives that long.
@@ -47,6 +58,10 @@ class GeminiProvider:
         except errors.APIError as exc:
             if getattr(exc, "code", None) in (429, 500, 502, 503, 504):
                 raise TransientError(str(exc)) from exc
+            raise
+        except Exception as exc:
+            if "timeout" in type(exc).__name__.lower() or "timed out" in str(exc).lower():
+                raise TransientError(f"request timed out: {exc}") from exc
             raise
         usage = getattr(resp, "usage_metadata", None)
         tin = int(getattr(usage, "prompt_token_count", 0) or 0)
