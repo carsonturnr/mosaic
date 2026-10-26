@@ -29,6 +29,9 @@ Each claim must:
 - list the ads it is about in ad_ids, using the ad refs the tools return;
 - cite every number it states in metrics, copying the value exactly as a tool returned it (rates as fractions such as 0.0178), with the entity ("ad:<ref>", "tag:<dimension>=<value>", "concepts" or "account") and window it came from.
 
+Number formatting:
+- In prose, write numbers the way a media buyer would: ROAS 1.64, CPA $36.05, CTR 2.4%, 28% of spend. In citations, copy the exact value the tool returned (rates as fractions such as 0.0178).
+
 Keep each section to at most 4 claims; an empty section is fine. When you are done, call submit_report exactly once."""
 
 SUBMIT_TOOL = submit_tool(
@@ -42,6 +45,7 @@ def run_strategist(
     ad_refs: set[str],
     *,
     creative_of_ad: dict[str, str] | None = None,
+    copy: dict[str, dict[str, str | None]] | None = None,
     tracer: Tracer | None = None,
     workspace_id: str | None = None,
     model: str = MODEL,
@@ -55,7 +59,7 @@ def run_strategist(
         user_message="Write the strategist report for this account. Analyses exist for windows: "
         + ", ".join(sorted(snapshots))
         + ".",
-        tools=SnapshotTools(snapshots, creative_of_ad),
+        tools=SnapshotTools(snapshots, creative_of_ad, copy),
         validate=lambda r: validate(r, snapshots, ad_refs),
         tracer=tracer,
         workspace_id=workspace_id,

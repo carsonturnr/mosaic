@@ -28,10 +28,14 @@ def _r(v: float | None, n: int = 6) -> float | None:
 
 class SnapshotTools:
     def __init__(
-        self, snapshots: dict[str, Snapshot], creative_of_ad: dict[str, str] | None = None
+        self,
+        snapshots: dict[str, Snapshot],
+        creative_of_ad: dict[str, str] | None = None,
+        copy: dict[str, dict[str, str | None]] | None = None,
     ) -> None:
         self.snaps = snapshots
         self.creative_of_ad = creative_of_ad or {}
+        self.copy = copy or {}  # ad ref -> {"headline", "primary_text"}
 
     # ---- helpers
     def snap(self, window: str) -> Snapshot:
@@ -185,6 +189,8 @@ class SnapshotTools:
         return {
             **self.ad_summary(st),
             "window": window,
+            "headline": self.copy.get(st.external_id, {}).get("headline"),
+            "primary_text": self.copy.get(st.external_id, {}).get("primary_text"),
             "kpis": {
                 m: {"estimate": _r(e.value), "low": _r(e.low), "high": _r(e.high), "raw": _r(e.raw)}
                 for m, e in st.kpis.items()
@@ -262,7 +268,7 @@ TOOL_DEFS: list[dict[str, Any]] = [
     },
     {
         "name": "get_ad_detail",
-        "description": "Every KPI (estimate, interval, raw) and total for one ad.",
+        "description": "Every KPI (estimate, interval, raw), totals, and the ad's headline and primary text.",
         "input_schema": _schema(
             {"ad": {"type": "string", "description": "Ad ref"}, "window": _W}, ["ad", "window"]
         ),

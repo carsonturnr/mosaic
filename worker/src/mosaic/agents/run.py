@@ -30,6 +30,22 @@ def load_snapshots(store: Store, workspace_id: str) -> tuple[dict[str, Snapshot]
     return snaps, computed
 
 
+def ad_copy(store: Store, workspace_id: str, ads: list[Row]) -> dict[str, dict[str, str | None]]:
+    """ad ref -> headline and primary text, for the agents' get_ad_detail tool."""
+    creatives = {
+        c["id"]: c
+        for c in store.select("creatives", "id,headline,primary_text", workspace_id=workspace_id)
+    }
+    return {
+        a["external_id"]: {
+            "headline": creatives[a["creative_id"]].get("headline"),
+            "primary_text": creatives[a["creative_id"]].get("primary_text"),
+        }
+        for a in ads
+        if a.get("creative_id") in creatives
+    }
+
+
 def generate_report(
     store: Store, workspace_id: str, create: Callable[..., Any], tracer: Tracer | None = None
 ) -> tuple[Row, AgentRun[Any]]:
@@ -42,6 +58,7 @@ def generate_report(
         snaps,
         {a["external_id"] for a in ads},
         creative_of_ad={a["id"]: a["creative_id"] for a in ads if a["creative_id"]},
+        copy=ad_copy(store, workspace_id, ads),
         tracer=tracer,
         workspace_id=workspace_id,
     )
@@ -117,6 +134,7 @@ def generate_briefs(
         guidelines=guidelines,
         learnings=learnings,
         creative_of_ad={a["id"]: a["creative_id"] for a in ads if a["creative_id"]},
+        copy=ad_copy(store, workspace_id, ads),
         tracer=tracer,
         workspace_id=workspace_id,
     )

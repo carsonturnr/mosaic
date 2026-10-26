@@ -21,6 +21,16 @@ from mosaic.sync import run_job, sync_metrics, sync_structure
 WORKSPACE_NAME = "Mosaic Dev (synthetic)"
 DEMO_NAME = "Driftwell (demo brand)"
 DEMO_DAYS = 90
+DEMO_GUIDELINES = " ".join(
+    [
+        "Driftwell is a fictional brand used for this demo: a sugar-free electrolyte drink mix",
+        "in single-serve sticks (citrus, berry, cucumber mint), sold by monthly subscription.",
+        "Audience: busy adults who hit an afternoon slump.",
+        "Voice: plain, warm, a little dry; no hype.",
+        "Avoid medical claims (no 'cures', 'treats' or 'boosts immunity') and never call it an",
+        "energy drink; it has no caffeine.",
+    ]
+)
 
 
 def ensure_owner(client: Any, email: str) -> str:
@@ -169,6 +179,11 @@ def seed_demo(
                 values["storage_path"] = path  # the card is the static ad itself
             store.update("creatives", values, id=c["id"])
             cards += 1
+    store.upsert(
+        "brand_memory",
+        [{"workspace_id": ws_id, "guidelines": DEMO_GUIDELINES, "learnings": ""}],
+        on_conflict="workspace_id",
+    )
     if embedder is not None:
         from mosaic.perception.embed import embed_scripts
 

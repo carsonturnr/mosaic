@@ -88,6 +88,8 @@ Rules:
 - Each brief's `why` is one sentence of evidence; cite every number in it in `evidence`, copying values exactly as the tools return them (rates as fractions), with entity ("ad:<ref>", "tag:<dimension>=<value>", "concepts" or "account") and window.
 - Scripts are beat by beat, with the hook in 0-3 seconds. Write in plain, spoken language. No claims the brand could not substantiate.
 - Add 2 static directions (written art direction only; no image generation), a list of 10 hook lines, and one test-plan row per brief with a modest daily budget.
+- In prose, write numbers the way a media buyer would: ROAS 1.64, CPA $36.05, CTR 2.4%, 28% of spend. In citations, copy the exact value the tool returned (rates as fractions such as 0.0178).
+- Write real lines for this brand's product. Use the brand guidelines for what the product is; if they don't say, read the ads' headline and primary text with get_ad_detail. Never leave placeholders such as [product] or [category].
 - Respect the brand guidelines below when given.
 
 When you are done, call submit_briefs exactly once."""
@@ -115,6 +117,7 @@ def run_briefs(
     guidelines: str | None = None,
     learnings: str | None = None,
     creative_of_ad: dict[str, str] | None = None,
+    copy: dict[str, dict[str, str | None]] | None = None,
     tracer: Tracer | None = None,
     workspace_id: str | None = None,
     model: str = MODEL,
@@ -130,7 +133,7 @@ def run_briefs(
         output=BriefSet,
         submit=SUBMIT_TOOL,
         user_message=message,
-        tools=SnapshotTools(snapshots, creative_of_ad),
+        tools=SnapshotTools(snapshots, creative_of_ad, copy),
         validate=lambda r: validate(r, snapshots, ad_refs),
         tracer=tracer,
         workspace_id=workspace_id,
