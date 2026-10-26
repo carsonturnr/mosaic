@@ -16,7 +16,8 @@ from mosaic.llm import LLM, LLMRequest, MediaPart
 from mosaic.perception.scenes import SceneSpan
 from mosaic.store import Row, Store
 
-TAGGING_MODEL = "gemini-2.5-flash"
+# gemini-2.5-flash is closed to new API accounts (Oct 2026); 3.5 Flash is the current stable Flash.
+TAGGING_MODEL = "gemini-3.5-flash"
 
 
 class TagValue(BaseModel):

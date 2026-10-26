@@ -9,7 +9,7 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-from mosaic.llm import LLM, LLMOutputError, MediaPart
+from mosaic.llm import LLM, LLMOutputError, MediaPart, TransientError
 from mosaic.media import Storage, probe
 from mosaic.perception.scenes import SceneSpan, detect_scenes, keyframes_for
 from mosaic.perception.tagging import (
@@ -98,6 +98,10 @@ def perceive_creative(
     except LLMOutputError:
         store.update("creatives", {"perception_status": "failed"}, id=cid)
         return None
+    except TransientError:
+        # The model was overloaded or rate-limited even after backoff; try again next run.
+        store.update("creatives", {"perception_status": "pending"}, id=cid)
+        return None
     except Exception:
         store.update("creatives", {"perception_status": "failed"}, id=cid)
         raise
@@ -107,10 +111,15 @@ def perceive_pending(
     llm: LLM, store: Store, storage: Storage, workspace_id: str, *, limit: int = 50
 ) -> dict[str, int]:
     rows = store.select("creatives", "*", workspace_id=workspace_id, perception_status="pending")
-    counts = {"done": 0, "failed": 0}
+    counts = {"done": 0, "failed": 0, "deferred": 0}
     for row in rows[:limit]:
         if not row.get("storage_path"):
             continue
-        ok = perceive_creative(llm, store, storage, row) is not None
-        counts["done" if ok else "failed"] += 1
+        if perceive_creative(llm, store, storage, row) is not None:
+            counts["done"] += 1
+        else:
+            status = store.select("creatives", "perception_status", id=row["id"])[0][
+                "perception_status"
+            ]
+            counts["deferred" if status == "pending" else "failed"] += 1
     return counts

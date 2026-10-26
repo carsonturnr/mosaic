@@ -74,3 +74,31 @@ def test_cache_keys_on_media_content(tmp_path: Path) -> None:
     assert len(p.requests) == 1
     f.write_bytes(b"two")  # changed media → new key
     assert llm.structured("t", req, Out).answer == 2
+
+
+def test_gemini_provider_uploads_each_file_once_across_retries(tmp_path: Path) -> None:
+    from types import SimpleNamespace as NS
+
+    from mosaic.providers import GeminiProvider
+
+    uploads: list[str] = []
+
+    class Files:
+        def upload(self, file: str, config: dict) -> NS:  # type: ignore[type-arg]
+            uploads.append(file)
+            return NS(name="f1", state=NS(name="ACTIVE"))
+
+    calls = {"n": 0}
+
+    class Models:
+        def generate_content(self, **kw: object) -> NS:
+            calls["n"] += 1
+            return NS(text='{"answer": 1}', usage_metadata=None)
+
+    p = GeminiProvider("k", client=NS(files=Files(), models=Models()))
+    f = tmp_path / "v.mp4"
+    f.write_bytes(b"x")
+    req = LLMRequest(model="m", system="s", prompt="p", media=(MediaPart(f, "video/mp4"),))
+    p.generate(req)
+    p.generate(req)
+    assert uploads == [str(f)] and calls["n"] == 2

@@ -152,7 +152,7 @@ def test_perceive_video_end_to_end(test_video: Path) -> None:
     )
     fake = Fake(scenes=4)
     counts = perceive_pending(LLM(fake), store, storage, "ws")
-    assert counts == {"done": 1, "failed": 0}
+    assert counts == {"done": 1, "failed": 0, "deferred": 0}
 
     scenes = sorted(store.tables["scenes"], key=lambda s: s["idx"])
     assert [round(s["start_s"], 1) for s in scenes] == [0.0, 2.0, 3.0, 5.0]
@@ -256,3 +256,32 @@ def test_workspace_taxonomy_overrides_defaults_and_adds_custom() -> None:
     prompt = build_prompt(list(tax.values()), {"primary_text": "x"}, [], is_video=False)
     assert "- offer (Offer): none, BOGO" in prompt and "leak" not in prompt
     assert "- creator (Who appears on camera): free text, short phrase" in prompt
+
+
+def test_overloaded_model_leaves_creative_pending(tmp_path: Path) -> None:
+    from mosaic.llm import TransientError
+
+    store, storage = MemoryStore(), MemoryStorage()
+    for r in TAXONOMY_ROWS:
+        store.insert("taxonomy_dimensions", r)
+    img = tmp_path / "a.png"
+    img.write_bytes(b"\x89PNG fake")
+    storage.upload("ws/c3/original.png", img, "image/png")
+    store.insert(
+        "creatives",
+        {
+            "id": "c3",
+            "workspace_id": "ws",
+            "type": "image",
+            "storage_path": "ws/c3/original.png",
+            "perception_status": "pending",
+        },
+    )
+
+    class Busy:
+        def generate(self, req: LLMRequest) -> LLMResponse:
+            raise TransientError("503 high demand")
+
+    counts = perceive_pending(LLM(Busy(), sleep=lambda _: None), store, storage, "ws")
+    assert counts == {"done": 0, "failed": 0, "deferred": 1}
+    assert store.select("creatives", id="c3")[0]["perception_status"] == "pending"

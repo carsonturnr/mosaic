@@ -9,7 +9,8 @@ from mosaic.llm import LLMRequest, LLMResponse, TransientError
 
 # USD per 1M tokens (input, output). Update when pricing changes.
 GEMINI_PRICES: dict[str, tuple[float, float]] = {
-    "gemini-2.5-flash": (0.30, 2.50),
+    "gemini-3.5-flash": (1.50, 9.00),
+    "gemini-3.5-flash-lite": (0.30, 2.50),
 }
 
 
@@ -22,17 +23,16 @@ class GeminiProvider:
 
             client = genai.Client(api_key=api_key)
         self._client = client
+        # (path, mtime, size) -> uploaded file, so retries don't re-upload large videos.
+        # Gemini keeps uploads for 48 hours; a process never lives that long.
+        self._uploads: dict[tuple[str, float, int], Any] = {}
 
     def generate(self, req: LLMRequest) -> LLMResponse:
         from google.genai import errors, types
 
         parts: list[Any] = []
         for m in req.media:
-            uploaded = self._client.files.upload(
-                file=str(m.path), config={"mime_type": m.mime_type}
-            )
-            uploaded = self._wait_active(uploaded)
-            parts.append(uploaded)
+            parts.append(self._upload(m.path, m.mime_type))
         parts.append(req.prompt)
         config = types.GenerateContentConfig(
             system_instruction=req.system,
@@ -58,6 +58,14 @@ class GeminiProvider:
             output_tokens=tout,
             cost_usd=round(tin / 1e6 * pin + tout / 1e6 * pout, 6),
         )
+
+    def _upload(self, path: Any, mime_type: str) -> Any:
+        st = path.stat()
+        key = (str(path), st.st_mtime, st.st_size)
+        if key not in self._uploads:
+            uploaded = self._client.files.upload(file=str(path), config={"mime_type": mime_type})
+            self._uploads[key] = self._wait_active(uploaded)
+        return self._uploads[key]
 
     def _wait_active(self, f: Any, timeout_s: float = 300) -> Any:
         deadline = time.monotonic() + timeout_s

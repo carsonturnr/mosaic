@@ -180,6 +180,7 @@ def perceive(store: Store, settings: Settings, ds: Row, storage: Any, limit: int
         ingested: int
         done: int
         failed: int
+        deferred: int = 0
 
     src = build_source(ds, settings, store)
     llm = build_llm(settings)
