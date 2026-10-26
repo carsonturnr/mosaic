@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { WorkspaceNav } from '../components/WorkspaceNav'
-import { workerApi } from '../lib/api'
 import { supabase } from '../lib/supabase'
+import { useAgentJob } from '../lib/useAgentJob'
 import { useAsync } from '../lib/useAsync'
 import { useWorkspaceMode } from '../lib/workspaceBase'
 
@@ -50,21 +50,9 @@ export function Briefs() {
   const { base, readOnly } = useWorkspaceMode()
   const data = useAsync(() => load(id), [id])
   const [request, setRequest] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const generate = async () => {
-    setBusy(true)
-    setError(null)
-    try {
-      await workerApi.briefs(id, request.trim() || undefined)
-      data.reload()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setBusy(false)
-    }
-  }
+  const job = useAgentJob(id, 'brief', data.reload)
+  const busy = job.busy
+  const error = job.error
 
   const row = data.data?.row
   const set = row?.content
@@ -85,9 +73,9 @@ export function Briefs() {
           <p className="text-xs text-neutral-500">
             Uses your brand guidelines from <Link to={`/app/w/${id}/settings`} className="underline">Settings</Link> and the latest report.
           </p>
-          <button type="button" onClick={() => void generate()} disabled={busy}
+          <button type="button" onClick={() => void job.start(request.trim() || undefined)} disabled={busy}
             className="shrink-0 rounded-md bg-neutral-900 px-3 py-2 text-sm text-white disabled:opacity-50">
-            {busy ? 'Writing briefs… (about a minute)' : 'Write briefs'}
+            {busy ? 'Writing briefs… (about two minutes)' : 'Write briefs'}
           </button>
         </div>
         {error && <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}

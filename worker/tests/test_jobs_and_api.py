@@ -167,3 +167,62 @@ def test_strategist_endpoint_needs_a_key(monkeypatch: Any) -> None:
     c = _client(store)
     r = c.post("/workspaces/ws/reports/strategist", headers={"Authorization": "Bearer k1"})
     assert r.status_code == 503 and "ANTHROPIC_API_KEY" in r.text
+
+
+def test_agent_endpoints_queue_a_job_and_spawn_on_modal(monkeypatch: Any) -> None:
+    from dataclasses import replace
+
+    monkeypatch.setenv("WORKER_API_KEY", "k1")
+    monkeypatch.setenv("MODAL_TASK_ID", "ta-test")
+    store, _ = _store_with_synthetic_source()
+    c = _client(store)
+    api.deps.settings_factory = lambda: replace(SETTINGS, anthropic_api_key="sk-test")
+    spawned: list[str] = []
+    api.deps.spawn = spawned.append
+    r = c.post(
+        "/workspaces/ws/reports/briefs",
+        json={"request": " UGC only "},
+        headers={"Authorization": "Bearer k1"},
+    )
+    assert r.status_code == 202 and r.json()["status"] == "queued"
+    job = store.tables["agent_jobs"][0]
+    assert spawned == [job["id"]] and job["kind"] == "brief" and job["request"] == "UGC only"
+
+
+def test_run_agent_job_records_done_and_failed() -> None:
+    from types import SimpleNamespace as NS
+
+    from mosaic.seed import seed
+
+    store = MemoryStore()
+    ws = seed(store, "owner", seed=42)["workspace_id"]
+    report = {"summary": "s", "working": [], "double_down": [], "cut": [], "missing_concepts": []}
+    calls = [report]
+    fake = lambda **kw: NS(  # noqa: E731
+        content=[NS(type="tool_use", id="t", name="submit_report", input=calls.pop(0))],
+        stop_reason="tool_use",
+        usage=NS(input_tokens=1, output_tokens=1),
+    )
+    job = store.insert("agent_jobs", {"workspace_id": ws, "kind": "strategist", "status": "queued"})
+    done = jobs.run_agent_job(store, SETTINGS, job["id"], create=fake)
+    assert done["status"] == "done" and done["report_id"] and done["finished_at"]
+    bad = store.insert(
+        "agent_jobs", {"workspace_id": "no-analysis", "kind": "brief", "status": "queued"}
+    )
+    failed = jobs.run_agent_job(store, SETTINGS, bad["id"], create=fake)
+    assert failed["status"] == "failed" and "no analysis" in failed["error"]
+
+
+def test_perception_only_runs_on_live_meta_sources() -> None:
+    import pytest
+
+    assert jobs.has_real_media({"kind": "meta_live"})
+    for kind in ("sandbox_synthetic", "demo"):
+        assert not jobs.has_real_media({"kind": kind})
+        with pytest.raises(ValueError):
+            jobs.perceive(
+                MemoryStore(),
+                SETTINGS,
+                {"id": "d", "workspace_id": "w", "kind": kind},
+                storage=None,
+            )

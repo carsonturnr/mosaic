@@ -159,8 +159,15 @@ def build_llm(settings: Settings) -> Any:
     return LLM(GeminiProvider(settings.gemini_api_key), cache=DiskCache(cache_dir), tracer=tracer)
 
 
+def has_real_media(ds: Row) -> bool:
+    """Only live Meta accounts have creative files to download and tag."""
+    return ds["kind"] == "meta_live"
+
+
 def perceive(store: Store, settings: Settings, ds: Row, storage: Any, limit: int = 50) -> Row:
     """Ingest media for new creatives, then tag every pending creative."""
+    if not has_real_media(ds):
+        raise ValueError(f"data source kind {ds['kind']!r} has no media to perceive")
     import tempfile
     from pathlib import Path
 
@@ -186,3 +193,42 @@ def perceive(store: Store, settings: Settings, ds: Row, storage: Any, limit: int
         return PerceiveStats(ingested=len(ingested), **counts)
 
     return run_job(store, ds["id"], "perceive", run)
+
+
+def run_agent_job(store: Store, settings: Settings, job_id: str, create: Any | None = None) -> Row:
+    """Run one queued agent job (strategist report or briefs) and record the outcome."""
+    from datetime import UTC, datetime
+
+    from mosaic.agents.run import anthropic_create, generate_briefs, generate_report
+
+    job = store.select("agent_jobs", "*", id=job_id)[0]
+    store.update("agent_jobs", {"status": "running"}, id=job_id)
+    try:
+        if create is None:
+            if not settings.anthropic_api_key:
+                raise RuntimeError("ANTHROPIC_API_KEY is not configured on the worker")
+            create = anthropic_create(settings.anthropic_api_key)
+        tracer = build_tracer()
+        if job["kind"] == "strategist":
+            row, _ = generate_report(store, job["workspace_id"], create, tracer=tracer)
+        else:
+            row, _ = generate_briefs(
+                store, job["workspace_id"], create, request=job.get("request"), tracer=tracer
+            )
+    except Exception as exc:
+        store.update(
+            "agent_jobs",
+            {
+                "status": "failed",
+                "error": str(exc)[:2000],
+                "finished_at": datetime.now(UTC).isoformat(),
+            },
+            id=job_id,
+        )
+        return store.select("agent_jobs", "*", id=job_id)[0]
+    store.update(
+        "agent_jobs",
+        {"status": "done", "report_id": row["id"], "finished_at": datetime.now(UTC).isoformat()},
+        id=job_id,
+    )
+    return store.select("agent_jobs", "*", id=job_id)[0]

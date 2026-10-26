@@ -32,18 +32,15 @@ async function call<T>(path: string, body?: unknown): Promise<T> {
   return (await res.json()) as T
 }
 
-export interface ReportResult {
-  report_id: string
-  grounding_passed: boolean
-  problems: { section: string; claim: string; issue: string }[]
-  turns: number
-  cost_usd: number
+export interface AgentJob {
+  job_id: string
+  status: 'queued'
 }
 
 export const workerApi = {
-  strategistReport: (workspaceId: string) => call<ReportResult>(`/workspaces/${workspaceId}/reports/strategist`),
+  strategistReport: (workspaceId: string) => call<AgentJob>(`/workspaces/${workspaceId}/reports/strategist`),
   briefs: (workspaceId: string, request?: string) =>
-    call<ReportResult>(`/workspaces/${workspaceId}/reports/briefs`, { request: request ?? null }),
+    call<AgentJob>(`/workspaces/${workspaceId}/reports/briefs`, { request: request ?? null }),
   analyze: (workspaceId: string) => call<unknown>(`/workspaces/${workspaceId}/analyze`),
   refresh: (workspaceId: string) =>
     call<{ runs: SyncRunSummary[] }>(`/workspaces/${workspaceId}/refresh`),

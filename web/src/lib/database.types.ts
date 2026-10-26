@@ -243,6 +243,57 @@ export type Database = {
           },
         ]
       }
+      agent_jobs: {
+        Row: {
+          created_at: string
+          error: string | null
+          finished_at: string | null
+          id: string
+          kind: Database["public"]["Enums"]["report_kind"]
+          report_id: string | null
+          request: string | null
+          status: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["report_kind"]
+          report_id?: string | null
+          request?: string | null
+          status?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["report_kind"]
+          report_id?: string | null
+          request?: string | null
+          status?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_jobs_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_jobs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       analysis_snapshots: {
         Row: {
           computed_at: string
@@ -970,6 +1021,7 @@ export type Database = {
           video_thruplays: number
         }[]
       }
+      is_demo_workspace: { Args: { ws: string }; Returns: boolean }
       owns_workspace: { Args: { ws: string }; Returns: boolean }
       vault_read_secret: { Args: { p_id: string }; Returns: string }
       vault_store_secret: {

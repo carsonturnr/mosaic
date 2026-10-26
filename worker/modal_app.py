@@ -74,8 +74,8 @@ def perceive() -> list[dict[str, Any]]:
     storage = SupabaseStorage(store.client)
     results: list[dict[str, Any]] = []
     for ds in store.select("data_sources", "*"):
-        if ds["kind"] == "sandbox_synthetic":
-            continue  # synthetic creatives have no media
+        if not jobs.has_real_media(ds):
+            continue  # synthetic and demo creatives have no media to tag
         try:
             run = jobs.perceive(store, settings, ds, storage)
             results.append(
@@ -94,6 +94,20 @@ def nightly_evals() -> None:
     import sys
 
     subprocess.run([sys.executable, "-m", "mosaic.evals", "--record"], check=True)
+
+
+@app.function(image=image, secrets=secrets, timeout=1800)
+def agent_job(job_id: str) -> dict[str, Any]:
+    """A strategist report or brief run, queued by the API (see agent_jobs)."""
+    from mosaic import jobs
+    from mosaic.config import Settings
+    from mosaic.store import SupabaseStore
+
+    settings = Settings.from_env()
+    store = SupabaseStore(settings.supabase_url, settings.supabase_service_role_key)
+    row = jobs.run_agent_job(store, settings, job_id)
+    print(f"agent_job {job_id}: {row['status']} {row.get('error') or ''}")
+    return {"status": row["status"], "report_id": row.get("report_id")}
 
 
 @app.function(image=image, secrets=secrets, timeout=900)

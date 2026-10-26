@@ -28,11 +28,13 @@ class Deps:
     store_factory: Callable[[], Store]
     settings_factory: Callable[[], Settings]
     verify_jwt: Callable[[str], str | None]
+    spawn: Callable[[str], None]
 
     def __init__(self) -> None:
         self.settings_factory = Settings.from_env
         self.store_factory = self._default_store
         self.verify_jwt = lambda token: verify_supabase_jwt(token)
+        self.spawn = lambda job_id: _spawn_modal(job_id)
 
     def _default_store(self) -> Store:
         s = self.settings_factory()
@@ -118,69 +120,56 @@ def analyze(workspace_id: str, principal: Auth) -> dict[str, Any]:
     return analyze_workspace(store, workspace_id).model_dump()
 
 
-@app.post("/workspaces/{workspace_id}/reports/strategist")
-def strategist_report(workspace_id: str, principal: Auth) -> dict[str, Any]:
-    store, settings = deps.store_factory(), deps.settings_factory()
-    require_workspace(store, principal, workspace_id)
-    if not settings.anthropic_api_key:
-        raise HTTPException(503, "Reports need ANTHROPIC_API_KEY on the worker")
-    from mosaic.agents.run import anthropic_create, generate_report
-    from mosaic.agents.strategist import AgentError
-
-    try:
-        row, run = generate_report(
-            store,
-            workspace_id,
-            anthropic_create(settings.anthropic_api_key),
-            tracer=jobs.build_tracer(),
-        )
-    except AgentError as exc:
-        raise HTTPException(502, str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(409, str(exc)) from exc
-    return {
-        "report_id": row["id"],
-        "grounding_passed": run.grounding.passed,
-        "problems": [p.model_dump() for p in run.grounding.problems],
-        "turns": run.turns,
-        "cost_usd": round(run.cost_usd, 4),
-    }
-
-
-class BriefRequest(BaseModel):
+class AgentJobRequest(BaseModel):
     request: str | None = None
 
 
-@app.post("/workspaces/{workspace_id}/reports/briefs")
-def briefs_report(
-    workspace_id: str, principal: Auth, body: BriefRequest | None = None
+def _spawn_modal(job_id: str) -> None:
+    import modal
+
+    modal.Function.from_name("mosaic", "agent_job").spawn(job_id)
+
+
+def queue_agent_job(
+    workspace_id: str,
+    kind: str,
+    principal: Principal,
+    background: BackgroundTasks,
+    request: str | None = None,
 ) -> dict[str, Any]:
     store, settings = deps.store_factory(), deps.settings_factory()
     require_workspace(store, principal, workspace_id)
     if not settings.anthropic_api_key:
-        raise HTTPException(503, "Briefs need ANTHROPIC_API_KEY on the worker")
-    from mosaic.agents.loop import AgentError
-    from mosaic.agents.run import anthropic_create, generate_briefs
+        raise HTTPException(503, "Reports need ANTHROPIC_API_KEY on the worker")
+    job = store.insert(
+        "agent_jobs",
+        {"workspace_id": workspace_id, "kind": kind, "request": (request or "").strip() or None},
+    )
+    if os.environ.get("MODAL_TASK_ID"):
+        # On Modal the job runs in its own function: agent runs outlast one web request.
+        deps.spawn(job["id"])
+    else:
+        background.add_task(jobs.run_agent_job, store, settings, job["id"])
+    return {"job_id": job["id"], "status": "queued"}
 
-    try:
-        row, run = generate_briefs(
-            store,
-            workspace_id,
-            anthropic_create(settings.anthropic_api_key),
-            request=body.request if body else None,
-            tracer=jobs.build_tracer(),
-        )
-    except AgentError as exc:
-        raise HTTPException(502, str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(409, str(exc)) from exc
-    return {
-        "report_id": row["id"],
-        "grounding_passed": run.grounding.passed,
-        "problems": [p.model_dump() for p in run.grounding.problems],
-        "turns": run.turns,
-        "cost_usd": round(run.cost_usd, 4),
-    }
+
+@app.post("/workspaces/{workspace_id}/reports/strategist", status_code=202)
+def strategist_report(
+    workspace_id: str, principal: Auth, background: BackgroundTasks
+) -> dict[str, Any]:
+    return queue_agent_job(workspace_id, "strategist", principal, background)
+
+
+@app.post("/workspaces/{workspace_id}/reports/briefs", status_code=202)
+def briefs_report(
+    workspace_id: str,
+    principal: Auth,
+    background: BackgroundTasks,
+    body: AgentJobRequest | None = None,
+) -> dict[str, Any]:
+    return queue_agent_job(
+        workspace_id, "brief", principal, background, body.request if body else None
+    )
 
 
 class MetaAdAccount(BaseModel):

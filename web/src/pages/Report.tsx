@@ -1,9 +1,8 @@
-import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { WorkspaceNav } from '../components/WorkspaceNav'
-import { workerApi } from '../lib/api'
 import { fmt } from '../lib/format'
 import { supabase } from '../lib/supabase'
+import { useAgentJob } from '../lib/useAgentJob'
 import { useAsync } from '../lib/useAsync'
 import { useWorkspaceMode } from '../lib/workspaceBase'
 
@@ -57,21 +56,9 @@ export function Report() {
   const { id = '' } = useParams<{ id: string }>()
   const { base, readOnly } = useWorkspaceMode()
   const data = useAsync(() => load(id), [id])
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const generate = async () => {
-    setBusy(true)
-    setError(null)
-    try {
-      await workerApi.strategistReport(id)
-      data.reload()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setBusy(false)
-    }
-  }
+  const job = useAgentJob(id, 'strategist', data.reload)
+  const busy = job.busy
+  const error = job.error
 
   const r = data.data?.report
   const meta = r?.input_snapshot ?? {}
@@ -92,7 +79,7 @@ export function Report() {
           )}
         </div>
         {!readOnly && (
-          <button type="button" onClick={() => void generate()} disabled={busy}
+          <button type="button" onClick={() => void job.start()} disabled={busy}
             className="rounded-md bg-neutral-900 px-3 py-2 text-sm text-white disabled:opacity-50">
             {busy ? 'Writing report… (about a minute)' : r ? 'Regenerate' : 'Generate report'}
           </button>
