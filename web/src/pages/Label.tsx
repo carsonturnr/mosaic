@@ -32,6 +32,8 @@ async function load(workspaceId: string): Promise<LabelData> {
       .order('external_id'),
     fetchTaxonomy(workspaceId),
   ])
+  // RLS hides other owners' workspaces, so a missing row means "not yours", not "empty"
+  if (ws.error || !ws.data) throw new Error('Workspace not found, or it belongs to another account.')
   if (cr.error) throw new Error(cr.error.message)
   const creatives = cr.data as Creative[]
   const ids = creatives.map((c) => c.id)
