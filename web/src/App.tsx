@@ -5,6 +5,7 @@ import { WorkspaceModeContext } from './lib/workspaceBase'
 import { Landing } from './pages/Landing'
 import { Privacy } from './pages/Privacy'
 import { Report } from './pages/Report'
+import { Label } from './pages/Label'
 import { Settings } from './pages/Settings'
 import { SignIn } from './pages/SignIn'
 import { Terms } from './pages/Terms'
@@ -45,6 +46,7 @@ export default function App() {
             <Route path="/app/w/:id/report" element={<Report />} />
             <Route path="/app/w/:id/briefs" element={<Briefs />} />
             <Route path="/app/w/:id/settings" element={<Settings />} />
+            <Route path="/app/w/:id/label" element={<Label />} />
           </Route>
         </Routes>
       </BrowserRouter>

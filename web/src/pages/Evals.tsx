@@ -21,6 +21,15 @@ async function load(): Promise<EvalRun[]> {
   return data as unknown as EvalRun[]
 }
 
+const TAG_FIELDS: [string, string][] = [
+  ['hook_type', 'Hook type'],
+  ['angle', 'Angle'],
+  ['format', 'Format'],
+  ['offer', 'Offer'],
+  ['proof_type', 'Proof'],
+  ['cta', 'CTA'],
+]
+
 const pct = (v: number) => `${Math.round(v * 100)}%`
 const sha = (s: string | null) => (s ? s.slice(0, 7) : '—')
 
@@ -78,10 +87,26 @@ export function Evals() {
         <div className="rounded-lg border border-neutral-200 p-4">
           <h2 className="text-sm font-semibold">Tagging accuracy</h2>
           {tagging ? (
-            <ul className="mt-2 space-y-1 text-sm">
-              {Object.entries(tagging.metrics).map(([k, v]) => <li key={k} className="flex justify-between"><span>{k}</span><span className="tabular-nums">{typeof v === 'number' && v <= 1 ? pct(v) : v}</span></li>)}
-            </ul>
-          ) : <p className="mt-2 text-sm text-neutral-500">Waiting for the hand-labeled set. Per-field F1 appears here once labels exist.</p>}
+            <>
+              <p className="mt-1 text-xs text-neutral-500">
+                AI tags vs blind hand labels on {tagging.metrics.ads} ads · mean F1 {(tagging.metrics.mean_f1 ?? 0).toFixed(2)}
+              </p>
+              <table className="mt-2 w-full text-sm">
+                <thead className="text-xs text-neutral-500">
+                  <tr><th className="py-1 text-left font-normal">Field</th><th className="text-right font-normal">Accuracy</th><th className="text-right font-normal">Macro F1</th></tr>
+                </thead>
+                <tbody>
+                  {TAG_FIELDS.filter(([k]) => tagging.metrics[`${k}_f1`] != null).map(([k, label]) => (
+                    <tr key={k} className="border-t border-neutral-100">
+                      <td className="py-1">{label}</td>
+                      <td className="text-right tabular-nums">{pct(tagging.metrics[`${k}_accuracy`] ?? 0)}</td>
+                      <td className="text-right tabular-nums">{(tagging.metrics[`${k}_f1`] ?? 0).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          ) : <p className="mt-2 text-sm text-neutral-500">Waiting for hand labels. Label ads from a workspace's Label tab; per-field F1 appears after the next eval run.</p>}
         </div>
       </section>
 

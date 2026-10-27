@@ -8,12 +8,14 @@ const tabs = [
   { to: 'report', label: 'Report', end: false, also: null },
   { to: 'briefs', label: 'Briefs', end: false, also: null },
   { to: 'settings', label: 'Settings', end: false, also: null },
+  { to: 'label', label: 'Label', end: false, also: null },
 ]
+const OWNER_ONLY = new Set(['settings', 'label'])
 
 export function WorkspaceNav({ id, name }: { id: string; name: string | undefined }) {
   const { pathname } = useLocation()
   const { base, readOnly } = useWorkspaceMode()
-  const visible = tabs.filter((t) => !(readOnly && t.to === 'settings'))
+  const visible = tabs.filter((t) => !(readOnly && OWNER_ONLY.has(t.to)))
   return (
     <div className="mb-6">
       {readOnly ? (

@@ -854,6 +854,35 @@ export type Database = {
           },
         ]
       }
+      tag_labels: {
+        Row: {
+          creative_id: string
+          dimension_key: string
+          labeled_at: string
+          value: string
+        }
+        Insert: {
+          creative_id: string
+          dimension_key: string
+          labeled_at?: string
+          value: string
+        }
+        Update: {
+          creative_id?: string
+          dimension_key?: string
+          labeled_at?: string
+          value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tag_labels_creative_id_fkey"
+            columns: ["creative_id"]
+            isOneToOne: false
+            referencedRelation: "creatives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       taxonomy_dimensions: {
         Row: {
           allowed_values: Json | null
