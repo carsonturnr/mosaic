@@ -180,7 +180,7 @@ function DimensionForm({ initial, onSave, onCancel, existingKeys }: {
       </label>
       <label className="flex flex-col gap-1 sm:col-span-2">
         <span className="text-xs text-neutral-600">What it means (shown to the AI)</span>
-        <input value={description} onChange={(e) => setDescription(e.target.value)} className="rounded-md border border-neutral-300 bg-white px-2 py-1.5" />
+        <textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} className="rounded-md border border-neutral-300 bg-white px-2 py-1.5" />
       </label>
       <label className="flex flex-col gap-1">
         <span className="text-xs text-neutral-600">Allowed values, one per line (empty = free text)</span>

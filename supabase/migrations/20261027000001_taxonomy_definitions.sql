@@ -1,0 +1,45 @@
+-- Per-value definitions for the default taxonomy. The description is what the tagging
+-- model and the hand labeler both read, so it has to settle the cases two careful people
+-- would otherwise split on. Workspace overrides keep their own descriptions.
+
+update taxonomy_dimensions set description =
+  'How the first 3 seconds grab attention. testimonial: someone recounts their own purchase or experience ("I bought this because…"). '
+  'problem/pain: names a pain or frustration the viewer has. curiosity/question: asks a question or opens a loop the ad will close. '
+  'bold claim: a strong assertion about the product or the viewer. stat/number: leads with a figure. demo/visual: shows the product in use. '
+  'us-vs-them: contrasts with an alternative. offer-first: leads with the deal. pattern interrupt: an unexpected visual or sound with no claim, '
+  'question or pain in it. If a surprising line also states a pain, claim or question, use that instead of pattern interrupt.'
+where workspace_id is null and key = 'hook_type';
+
+update taxonomy_dimensions set description =
+  'The main reason to buy, judged across the whole ad rather than the hook. performance/results: a specific outcome (energy, digestion, sleep, focus). '
+  'convenience: easier or faster than the alternatives ("one scoop replaces…"). price/value: cost or savings. '
+  'quality/ingredients: what is in it and how it is made. social proof: how many people use or love it, as the main argument. '
+  'identity/lifestyle: the kind of person or routine it fits, with no specific outcome promised. '
+  'problem-solution: a named problem, then the product fixing it. comparison: explicitly against a named alternative. '
+  'If the ad promises a specific outcome, prefer performance/results over identity/lifestyle and convenience.'
+where workspace_id is null and key = 'angle';
+
+update taxonomy_dimensions set description =
+  'How the ad was made. UGC: a creator or customer filming themselves, casual and phone-shot, including talking straight to camera. '
+  'talking head: a polished, professionally lit speaker to camera (spokesperson, host, expert). founder story: the founder telling the brand''s story. '
+  'product demo: the product being used is the main content. montage/B-roll: mostly cut footage under a voiceover, with no single on-camera speaker. '
+  'text-on-screen: mainly text cards. static image and carousel: non-video ads.'
+where workspace_id is null and key = 'format';
+
+update taxonomy_dimensions set description =
+  'The promotion shown or said in the ad. trial: a free trial, free sample or money-back guarantee. bundle: products sold together. '
+  'none: no promotion at all, even if the price is mentioned.'
+where workspace_id is null and key = 'offer';
+
+update taxonomy_dimensions set description =
+  'The strongest evidence behind the claim. testimonial: a person describing their own results, including a UGC creator. '
+  'before/after: a change over time, shown or described. expert: a doctor, dietitian, scientist or other credentialed person. '
+  'reviews/stars: star ratings or quoted reviews. data/stat: numbers or studies. press: media logos or quotes. '
+  'none: no evidence at all.'
+where workspace_id is null and key = 'proof_type';
+
+update taxonomy_dimensions set description =
+  'The closing ask. Use the CTA button when it is given. Otherwise map the last spoken or on-screen ask: buy, order or shop is shop now; '
+  'claim a deal, discount or free gift is get offer; learn more, discover or link in bio is learn more; subscribe or join is sign up; '
+  'no explicit ask is other.'
+where workspace_id is null and key = 'cta';
