@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { WorkspaceNav } from '../components/WorkspaceNav'
 import { signedUrls } from '../lib/library'
 import { supabase } from '../lib/supabase'
@@ -21,7 +21,8 @@ interface LabelData {
   urls: Record<string, string>
 }
 
-async function load(workspaceId: string): Promise<LabelData> {
+/** `only`: ad refs to restrict the set to (?ads=ref1,ref2), for labeling a sample. */
+async function load(workspaceId: string, only: string[]): Promise<LabelData> {
   const [ws, cr, taxonomy] = await Promise.all([
     supabase.from('workspaces').select('name').eq('id', workspaceId).single(),
     supabase
@@ -35,7 +36,9 @@ async function load(workspaceId: string): Promise<LabelData> {
   // RLS hides other owners' workspaces, so a missing row means "not yours", not "empty"
   if (ws.error || !ws.data) throw new Error('Workspace not found, or it belongs to another account.')
   if (cr.error) throw new Error(cr.error.message)
-  const creatives = cr.data as Creative[]
+  const all = cr.data as Creative[]
+  const wanted = new Set(only.map((r) => r.replace(/^cr_/, '')))
+  const creatives = wanted.size ? all.filter((c) => wanted.has(c.external_id.replace(/^cr_/, ''))) : all
   const ids = creatives.map((c) => c.id)
   const { data: rows, error } = ids.length
     ? await supabase.from('tag_labels').select('creative_id, dimension_key, value').in('creative_id', ids)
@@ -56,7 +59,12 @@ function fieldsFor(dims: Dimension[], c: Creative): Dimension[] {
 
 export function Label() {
   const { id = '' } = useParams<{ id: string }>()
-  const { data, error, loading } = useAsync(() => load(id), [id])
+  const [params] = useSearchParams()
+  const ads = params.get('ads') ?? ''
+  const { data, error, loading } = useAsync(
+    () => load(id, ads.split(',').map((a) => a.trim()).filter(Boolean)),
+    [id, ads],
+  )
   const [labels, setLabels] = useState<Labels>({})
   const [index, setIndex] = useState(0)
   const [draft, setDraft] = useState<Record<string, string>>({})
