@@ -59,9 +59,7 @@ DEFAULT_TAXONOMY = [
             "made. social proof: how many people use or love it, as the main argument. "
             "identity/lifestyle: the kind of person or routine it fits, with no specific "
             "outcome promised. problem-solution: a named problem, then the product fixing it."
-            " comparison: explicitly against a named alternative. If the ad promises a "
-            "specific outcome, prefer performance/results over identity/lifestyle and "
-            "convenience."
+            " comparison: explicitly against a named alternative."
         ),
         [
             "performance/results",
@@ -106,7 +104,8 @@ DEFAULT_TAXONOMY = [
         (
             "The promotion shown or said in the ad. trial: a free trial, free sample or "
             "money-back guarantee. bundle: products sold together. none: no promotion at all,"
-            " even if the price is mentioned."
+            " even if the price is mentioned. If there are several, pick the one the ad leads"
+            " with."
         ),
         ["none", "% discount", "$ off", "free shipping", "bundle", "free gift", "trial"],
         "ad",
@@ -115,10 +114,11 @@ DEFAULT_TAXONOMY = [
         "proof_type",
         "Proof type",
         (
-            "The strongest evidence behind the claim. testimonial: a person describing their "
-            "own results, including a UGC creator. before/after: a change over time, shown or"
-            " described. expert: a doctor, dietitian, scientist or other credentialed person."
-            " reviews/stars: star ratings or quoted reviews. data/stat: numbers or studies. "
+            "The strongest evidence behind the claim. testimonial: a person describing "
+            "results they personally got from the product; a creator who only presents or "
+            "recommends it is not proof. before/after: a change over time, shown or "
+            "described. expert: a doctor, dietitian, scientist or other credentialed person. "
+            "reviews/stars: star ratings or quoted reviews. data/stat: numbers or studies. "
             "press: media logos or quotes. none: no evidence at all."
         ),
         ["none", "reviews/stars", "testimonial", "before/after", "expert", "data/stat", "press"],
