@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from mosaic.analytics.clusters import Concepts, CreativeInput, cluster
 from mosaic.analytics.compute import AdInput, Day, Snapshot, analyze
-from mosaic.perception.embed import load_embeddings, load_scripts
+from mosaic.perception.embed import VISUAL, load_embeddings, load_scripts
 from mosaic.store import Row, Store
 
 WINDOWS: dict[str, int | None] = {"7": 7, "30": 30, "90": 90, "all": None}
@@ -128,8 +128,11 @@ def concepts_for(
             tags[cid] = a.tags
     scripts = load_scripts(store, workspace_id)
     emb = load_embeddings(store, list(spend))
+    visual = load_embeddings(store, list(spend), kind=VISUAL)
     items = [
-        CreativeInput(cid, tags.get(cid, {}), scripts.get(cid, ""), s, emb.get(cid))
+        CreativeInput(
+            cid, tags.get(cid, {}), scripts.get(cid, ""), s, emb.get(cid), visual.get(cid)
+        )
         for cid, s in spend.items()
     ]
     return cluster(items)

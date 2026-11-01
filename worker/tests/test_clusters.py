@@ -1,6 +1,14 @@
+from pathlib import Path
+
 import pytest
 
-from mosaic.analytics.clusters import CreativeInput, cluster, jaccard_distance, tag_distance
+from mosaic.analytics.clusters import (
+    CreativeInput,
+    cluster,
+    content_distance,
+    jaccard_distance,
+    tag_distance,
+)
 from mosaic.synthetic.generator import SyntheticAccount
 
 
@@ -87,6 +95,81 @@ def test_embed_scripts_skips_unchanged_text() -> None:
     assert embed_scripts(store, fake, "ws").embedded == 1
     assert len(store.tables["creative_embeddings"]) == 1  # replaced, not duplicated
     assert load_embeddings(store, ["c1"])["c1"] == [float(len("H\nBuy it now\nTired?")), 1.0]
+
+
+class FakeImageEmbedder:
+    model = "fake-image"
+
+    def __init__(self) -> None:
+        self.calls: list[list[bytes]] = []
+
+    def embed_images(self, files: list[Path]) -> list[list[float]]:
+        self.calls.append([f.read_bytes() for f in files])
+        return [[1.0, 0.0] if f.read_bytes() == b"red" else [0.0, 1.0] for f in files]
+
+
+def test_embed_visuals_averages_keyframes_and_skips_unchanged(tmp_path: Path) -> None:
+    from mosaic.media import MemoryStorage
+    from mosaic.perception.embed import MAX_FRAMES, embed_visuals, load_embeddings
+    from mosaic.store import MemoryStore
+
+    store, storage = MemoryStore(), MemoryStorage()
+    for name, data in (("red.jpg", b"red"), ("blue.jpg", b"blue")):
+        (tmp_path / name).write_bytes(data)
+        storage.upload(name, tmp_path / name, "image/jpeg")
+    common = {"workspace_id": "ws", "perception_status": "done", "content_hash": "h"}
+    store.insert("creatives", {"id": "v", "type": "video", "storage_path": "v.mp4", **common})
+    store.insert("creatives", {"id": "s", "type": "image", "storage_path": "red.jpg", **common})
+    store.insert(
+        "creatives",
+        {
+            "id": "p",
+            "type": "image",
+            "storage_path": "red.jpg",
+            "workspace_id": "ws",
+            "perception_status": "pending",
+        },
+    )
+    store.insert("scenes", {"creative_id": "v", "idx": 0, "keyframe_path": "red.jpg"})
+    store.insert("scenes", {"creative_id": "v", "idx": 1, "keyframe_path": "blue.jpg"})
+    fake = FakeImageEmbedder()
+    first = embed_visuals(store, storage, fake, "ws")
+    assert (first.embedded, first.skipped_empty) == (2, 1)  # the pending creative waits
+    vecs = load_embeddings(store, ["v", "s"], kind="visual")
+    assert vecs["v"] == pytest.approx([2**-0.5, 2**-0.5])  # mean of red and blue, unit length
+    assert vecs["s"] == [1.0, 0.0]
+    assert embed_visuals(store, storage, fake, "ws").embedded == 0
+    for i in range(2, 2 * MAX_FRAMES):
+        store.insert("scenes", {"creative_id": "v", "idx": i, "keyframe_path": "red.jpg"})
+    assert embed_visuals(store, storage, fake, "ws").embedded == 1  # new keyframes
+    assert len(fake.calls[-1]) == MAX_FRAMES
+
+
+def test_visual_embeddings_join_or_replace_text() -> None:
+    t = {"format": "static image"}
+    # Statics with no copy: compared on the image alone.
+    same = [
+        CreativeInput("a", t, "", 1, visual=[1.0, 0.0]),
+        CreativeInput("b", t, "", 1, visual=[0.99, 0.05]),
+    ]
+    diff = [
+        CreativeInput("a", t, "", 1, visual=[1.0, 0.0]),
+        CreativeInput("b", t, "", 1, visual=[0.0, 1.0]),
+    ]
+    assert len(cluster(same).clusters) == 1
+    assert len(cluster(diff).clusters) == 2
+    # Same script but different visuals: the two halves average, so they split.
+    both = [
+        CreativeInput("a", t, "", 1, [1.0, 0.0], [1.0, 0.0]),
+        CreativeInput("b", t, "", 1, [1.0, 0.0], [0.0, 1.0]),
+    ]
+    assert content_distance(*both) == pytest.approx(0.5)
+    # Without visuals on both sides, content distance is the text distance as before.
+    one = [
+        CreativeInput("a", t, "buy now", 1, visual=[1.0, 0.0]),
+        CreativeInput("b", t, "buy now", 1),
+    ]
+    assert content_distance(*one) == 0
 
 
 def test_snapshots_carry_concepts_and_clusters_are_saved() -> None:

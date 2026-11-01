@@ -72,17 +72,27 @@ def metrics(store: Store, settings: Settings, ds: Row, job: str, since: date, un
     )
 
 
-def embed(store: Store, settings: Settings, ds: Row) -> Row | None:
-    """Script embeddings for clustering; skipped when no Gemini key is configured."""
+def embed(store: Store, settings: Settings, ds: Row, storage: Any = None) -> Row | None:
+    """Script embeddings for clustering, plus visual ones when storage is given (keyframes
+    exist only after perception); skipped when no Gemini key is configured."""
     if not settings.gemini_api_key:
         return None
-    from mosaic.perception.embed import embed_scripts
-    from mosaic.providers import GeminiEmbedder
+    from mosaic.perception.embed import embed_scripts, embed_visuals
+    from mosaic.providers import GeminiEmbedder, GeminiImageEmbedder
 
     embedder = GeminiEmbedder(settings.gemini_api_key)
-    return run_job(
+    run = run_job(
         store, ds["id"], "embed", lambda: embed_scripts(store, embedder, ds["workspace_id"])
     )
+    if storage is not None:
+        images = GeminiImageEmbedder(settings.gemini_api_key)
+        run = run_job(
+            store,
+            ds["id"],
+            "embed_visual",
+            lambda: embed_visuals(store, storage, images, ds["workspace_id"]),
+        )
+    return run
 
 
 def analysis(store: Store, ds: Row) -> Row:
@@ -200,7 +210,15 @@ def perceive(store: Store, settings: Settings, ds: Row, storage: Any, limit: int
         counts = perceive_pending(llm, store, storage, ds["workspace_id"], limit=limit)
         return PerceiveStats(ingested=len(ingested), **counts)
 
-    return run_job(store, ds["id"], "perceive", run)
+    result = run_job(store, ds["id"], "perceive", run)
+    if (result.get("stats") or {}).get("done"):
+        # New transcripts and keyframes: refresh embeddings, then concepts and rankings.
+        try:
+            embed(store, settings, ds, storage)
+        except Exception:
+            pass  # recorded in sync_runs by run_job
+        analysis(store, ds)
+    return result
 
 
 def run_agent_job(store: Store, settings: Settings, job_id: str, create: Any | None = None) -> Row:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import time
+from pathlib import Path
 from typing import Any
 
 from mosaic.llm import LLMRequest, LLMResponse, QuotaExhausted, TransientError
@@ -129,6 +130,54 @@ class GeminiEmbedder:
                 norm = sum(x * x for x in v) ** 0.5 or 1.0
                 out.append([x / norm for x in v])
         return out
+
+
+VISUAL_EMBEDDING_MODEL = "gemini-embedding-2"
+
+
+class GeminiImageEmbedder:
+    """Image embeddings (multimodal model), 1024-dim like the script embeddings, L2-normalized."""
+
+    model = VISUAL_EMBEDDING_MODEL
+
+    def __init__(self, api_key: str, client: Any | None = None) -> None:
+        if client is None:
+            from google import genai
+
+            client = genai.Client(api_key=api_key)
+        self._client = client
+
+    def embed_images(self, files: list[Path]) -> list[list[float]]:
+        from google.genai import types
+
+        out: list[list[float]] = []
+        for i in range(0, len(files), 16):
+            contents = [
+                types.Content(
+                    parts=[types.Part.from_bytes(data=f.read_bytes(), mime_type=_image_mime(f))]
+                )
+                for f in files[i : i + 16]
+            ]
+            resp = self._client.models.embed_content(
+                model=self.model,
+                contents=contents,
+                config=types.EmbedContentConfig(output_dimensionality=EMBEDDING_DIM),
+            )
+            for e in resp.embeddings:
+                v = list(e.values)
+                norm = sum(x * x for x in v) ** 0.5 or 1.0
+                out.append([x / norm for x in v])
+        return out
+
+
+def _image_mime(f: Path) -> str:
+    ext = f.suffix.lower().lstrip(".")
+    return {
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "png": "image/png",
+        "webp": "image/webp",
+    }.get(ext, "image/jpeg")
 
 
 def _retry_delay_s(message: str) -> float:

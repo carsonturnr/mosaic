@@ -213,6 +213,7 @@ def seed_local(
     name: str,
     guidelines: str = "",
     embedder: Any | None = None,
+    image_embedder: Any | None = None,
 ) -> dict[str, Any]:
     """A private workspace of real ad files, their stored tags, and synthetic performance.
 
@@ -282,6 +283,15 @@ def seed_local(
         from mosaic.perception.embed import embed_scripts
 
         run_job(store, ds["id"], "embed", lambda: embed_scripts(store, embedder, ws_id))
+    if image_embedder is not None:
+        from mosaic.perception.embed import embed_visuals
+
+        run_job(
+            store,
+            ds["id"],
+            "embed_visual",
+            lambda: embed_visuals(store, storage, image_embedder, ws_id),
+        )
     analysis = run_job(store, ds["id"], "analyze", lambda: analyze_workspace(store, ws_id))
     return {
         "workspace_id": ws_id,
@@ -339,10 +349,12 @@ def main() -> None:
         from pathlib import Path
 
         from mosaic.media import SupabaseStorage
-        from mosaic.providers import GeminiEmbedder
+        from mosaic.providers import GeminiEmbedder, GeminiImageEmbedder
 
         folder, results = Path(args.local[0]), json.loads(Path(args.local[1]).read_text())
-        embedder = GeminiEmbedder(settings.gemini_api_key) if settings.gemini_api_key else None
+        key = settings.gemini_api_key
+        embedder = GeminiEmbedder(key) if key else None
+        image_embedder = GeminiImageEmbedder(key) if key else None
         name = args.workspace_name if args.workspace_name != WORKSPACE_NAME else folder.name
         for k, v in seed_local(
             store,
@@ -353,6 +365,7 @@ def main() -> None:
             name=name,
             guidelines=args.guidelines,
             embedder=embedder,
+            image_embedder=image_embedder,
         ).items():
             print(f"{k}: {v}")
         return

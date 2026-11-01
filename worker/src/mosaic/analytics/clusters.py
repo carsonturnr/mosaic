@@ -1,9 +1,10 @@
 """Concept clustering and diversity (docs/ARCHITECTURE.md §9).
 
-Two creatives are the same concept when they share their key tags and their scripts
-say the same thing. Distance = average of a tag distance and a script distance;
-average-linkage agglomerative clustering cut at a threshold. Diversity is the
-spend-weighted effective number of concepts.
+Two creatives are the same concept when they share their key tags and their content
+matches. Distance = half tag distance, half content distance, where content is the mean
+of whichever of script and visual distance both creatives have (a static with no copy is
+compared on its image alone). Average-linkage agglomerative clustering cut at a
+threshold. Diversity is the spend-weighted effective number of concepts.
 """
 
 from __future__ import annotations
@@ -23,6 +24,10 @@ THRESHOLD = 0.2
 # Cosine distances between unrelated ad scripts sit around 0.3 for this embedding
 # model; scale so that "unrelated" is ~1 and paraphrases are near 0.
 TEXT_SCALE = 0.3
+# Same idea for the mean keyframe image embeddings (gemini-embedding-2). On a real
+# 40-ad account the pairwise distances had a median of 0.18 and near-duplicates sat
+# under 0.04, about the same spread as the script embeddings.
+VISUAL_SCALE = 0.3
 
 
 @dataclass(frozen=True)
@@ -32,6 +37,7 @@ class CreativeInput:
     text: str
     spend: float
     embedding: list[float] | None = None
+    visual: list[float] | None = None
 
 
 class Concept(BaseModel):
@@ -64,12 +70,27 @@ def jaccard_distance(x: str, y: str) -> float:
     return 1 - len(a & b) / len(a | b)
 
 
+def _scaled_cosine(x: list[float], y: list[float], scale: float) -> float:
+    u, v = np.asarray(x), np.asarray(y)
+    cos = float(u @ v / (np.linalg.norm(u) * np.linalg.norm(v) or 1))
+    return min(1.0, max(0.0, (1 - cos) / scale))
+
+
 def text_distance(a: CreativeInput, b: CreativeInput) -> float:
     if a.embedding is not None and b.embedding is not None:
-        u, v = np.asarray(a.embedding), np.asarray(b.embedding)
-        cos = float(u @ v / (np.linalg.norm(u) * np.linalg.norm(v) or 1))
-        return min(1.0, max(0.0, (1 - cos) / TEXT_SCALE))
+        return _scaled_cosine(a.embedding, b.embedding, TEXT_SCALE)
     return jaccard_distance(a.text, b.text)  # fallback when embeddings are missing
+
+
+def content_distance(a: CreativeInput, b: CreativeInput) -> float:
+    """Mean of the script and visual distances both creatives have; 1 with neither."""
+    parts = []
+    has_text = (a.embedding is not None and b.embedding is not None) or (a.text and b.text)
+    if has_text or a.visual is None or b.visual is None:
+        parts.append(text_distance(a, b))
+    if a.visual is not None and b.visual is not None:
+        parts.append(_scaled_cosine(a.visual, b.visual, VISUAL_SCALE))
+    return sum(parts) / len(parts)
 
 
 def distance_matrix(items: list[CreativeInput]) -> np.ndarray:
@@ -79,7 +100,7 @@ def distance_matrix(items: list[CreativeInput]) -> np.ndarray:
         for j in range(i + 1, n):
             d[i, j] = d[j, i] = 0.5 * tag_distance(
                 items[i].tags, items[j].tags
-            ) + 0.5 * text_distance(items[i], items[j])
+            ) + 0.5 * content_distance(items[i], items[j])
     return d
 
 
