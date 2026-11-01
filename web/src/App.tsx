@@ -1,4 +1,5 @@
 import { BrowserRouter, Outlet, Route, Routes } from 'react-router-dom'
+import { AppShell } from './components/AppShell'
 import { RequireAuth } from './components/RequireAuth'
 import { AuthProvider } from './lib/auth'
 import { WorkspaceModeContext } from './lib/workspaceBase'
@@ -29,28 +30,34 @@ export default function App() {
           <Route path="/sign-in" element={<SignIn />} />
           <Route path="/demo" element={<DemoEntry />} />
           <Route element={<DemoMode />}>
-            <Route path="/demo/w/:id" element={<Workspace />} />
-            <Route path="/demo/w/:id/library" element={<Library />} />
-            <Route path="/demo/w/:id/ads/:adId" element={<AdDetail />} />
-            <Route path="/demo/w/:id/analysis" element={<Analysis />} />
-            <Route path="/demo/w/:id/report" element={<Report />} />
-            <Route path="/demo/w/:id/briefs" element={<Briefs />} />
+            <Route path="/demo/w/:id" element={<AppShell />}>{workspacePages(false)}</Route>
           </Route>
           <Route element={<RequireAuth />}>
-            <Route path="/app" element={<Workspaces />} />
-            <Route path="/app/evals" element={<Evals />} />
-            <Route path="/app/w/:id" element={<Workspace />} />
-            <Route path="/app/w/:id/library" element={<Library />} />
-            <Route path="/app/w/:id/ads/:adId" element={<AdDetail />} />
-            <Route path="/app/w/:id/analysis" element={<Analysis />} />
-            <Route path="/app/w/:id/report" element={<Report />} />
-            <Route path="/app/w/:id/briefs" element={<Briefs />} />
-            <Route path="/app/w/:id/settings" element={<Settings />} />
-            <Route path="/app/w/:id/label" element={<Label />} />
+            <Route element={<AppShell />}>
+              <Route path="/app" element={<Workspaces />} />
+              <Route path="/app/evals" element={<Evals />} />
+            </Route>
+            <Route path="/app/w/:id" element={<AppShell />}>{workspacePages(true)}</Route>
           </Route>
         </Routes>
       </BrowserRouter>
     </AuthProvider>
+  )
+}
+
+/** Child routes of a workspace; settings and labeling are owner-only. */
+function workspacePages(owner: boolean) {
+  return (
+    <>
+      <Route index element={<Workspace />} />
+      <Route path="library" element={<Library />} />
+      <Route path="ads/:adId" element={<AdDetail />} />
+      <Route path="analysis" element={<Analysis />} />
+      <Route path="report" element={<Report />} />
+      <Route path="briefs" element={<Briefs />} />
+      {owner && <Route path="settings" element={<Settings />} />}
+      {owner && <Route path="label" element={<Label />} />}
+    </>
   )
 }
 

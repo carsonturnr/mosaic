@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { LineChart, type Point } from '../components/LineChart'
-import { WorkspaceNav } from '../components/WorkspaceNav'
+import { ArrowLeft, Film, Image as ImageIcon, Play, Sparkles } from 'lucide-react'
+import { Badge, Card, CardTitle, ErrorText, Loading, PageHeader, Segmented, Stat } from '../components/ui'
 import { fmt } from '../lib/format'
 import { fetchPerformance, fetchTags, signedUrls, type AdPerf, type CreativeTag } from '../lib/library'
 import { supabase } from '../lib/supabase'
@@ -25,7 +26,6 @@ type Scene = Pick<
 >
 
 interface DetailData {
-  workspaceName: string | undefined
   perf: AdPerf | undefined
   creative: Creative | null
   daily: Daily[]
@@ -35,8 +35,7 @@ interface DetailData {
 }
 
 async function loadDetail(workspaceId: string, adId: string): Promise<DetailData> {
-  const [ws, perfRows, ad, daily] = await Promise.all([
-    supabase.from('workspaces').select('name').eq('id', workspaceId).single(),
+  const [perfRows, ad, daily] = await Promise.all([
     fetchPerformance(workspaceId, 'all'),
     supabase.from('ads').select('creative_id').eq('id', adId).single(),
     supabase
@@ -68,7 +67,6 @@ async function loadDetail(workspaceId: string, adId: string): Promise<DetailData
     [c?.storage_path, c?.thumbnail_path, ...sceneRows.map((s) => s.keyframe_path)].filter((p): p is string => !!p),
   )
   return {
-    workspaceName: ws.data?.name,
     perf: perfRows.find((p) => p.ad_id === adId),
     creative: c,
     daily: (daily.data ?? []) as Daily[],
@@ -124,123 +122,83 @@ export function AdDetail() {
 
   const points: Point[] = (data?.daily ?? []).map((d) => ({ date: d.date, value: d[active.key] ?? null }))
 
-  if (loading && !data) return <main className="mx-auto max-w-6xl p-6 text-sm text-neutral-500">Loading…</main>
-  if (error || !data) return <main className="mx-auto max-w-6xl p-6 text-sm text-red-700">{error ?? 'Ad not found'}</main>
+  if (loading && !data) return <Loading />
+  if (error || !data) return <ErrorText>{error ?? 'Ad not found'}</ErrorText>
 
   const { perf, creative, tags, scenes, urls } = data
   const mediaUrl = creative?.storage_path ? urls[creative.storage_path] : undefined
   const poster = creative?.thumbnail_path ? urls[creative.thumbnail_path] : undefined
 
   return (
-    <main className="mx-auto max-w-6xl p-6">
-      <WorkspaceNav id={id} name={data.workspaceName} />
-      <Link to={`${base}/w/${id}/library`} className="text-sm text-neutral-500 hover:text-neutral-900">
-        ← Library
+    <>
+      <Link to={`${base}/w/${id}/library`} className="mb-4 inline-flex items-center gap-1 text-sm text-[var(--muted)] hover:text-[var(--text)]">
+        <ArrowLeft size={14} /> Library
       </Link>
+      <PageHeader
+        title={perf?.name ?? 'Ad'}
+        meta={
+          <span className="flex flex-wrap items-center gap-2">
+            {perf?.status && <Badge tone={perf.status === 'ACTIVE' ? 'good' : 'neutral'}>{perf.status.toLowerCase()}</Badge>}
+            <span>{isVideo ? `Video${creative?.duration_s ? ` · ${fmt.seconds(creative.duration_s)}` : ''}` : 'Static'}</span>
+            {perf?.first_date && perf.last_date && <span>· {perf.first_date} to {perf.last_date}</span>}
+            {perf?.external_id && <span className="font-mono">· {perf.external_id}</span>}
+          </span>
+        }
+      />
 
-      <div className="mt-3 grid gap-8 lg:grid-cols-[minmax(0,320px)_1fr]">
-        <section>
-          <div className="aspect-[4/5] overflow-hidden rounded-lg bg-neutral-100">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,340px)_1fr]">
+        <section className="lg:sticky lg:top-8 lg:self-start">
+          <div className="aspect-[4/5] overflow-hidden rounded-xl border border-[var(--line)] bg-black">
             {mediaUrl && isVideo ? (
-              <video src={mediaUrl} poster={poster} controls playsInline className="h-full w-full bg-black object-contain" />
+              <video src={mediaUrl} poster={poster} controls playsInline className="h-full w-full object-contain" />
             ) : mediaUrl ? (
               <img src={mediaUrl} alt="" className="h-full w-full object-contain" />
             ) : poster ? (
               <img src={poster} alt="Video poster" className="h-full w-full object-contain" />
             ) : (
-              <div className="flex h-full flex-col items-center justify-center gap-1 p-6 text-center text-sm text-neutral-500">
-                <span className="text-3xl text-neutral-400" aria-hidden>{isVideo ? '▶' : '▦'}</span>
-                No media stored for this creative yet.
+              <div className="flex h-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-[#1d1838] to-[#2c2552] p-6 text-center text-sm text-white/50">
+                {isVideo ? <Play size={26} /> : <ImageIcon size={26} />}
+                No media stored for this creative.
               </div>
             )}
           </div>
           {creative && (creative.headline || creative.primary_text) && (
-            <div className="mt-4 space-y-2 text-sm">
-              {creative.headline && <p className="font-medium">{creative.headline}</p>}
-              {creative.primary_text && <p className="whitespace-pre-line text-neutral-700">{creative.primary_text}</p>}
+            <Card className="mt-4">
+              {creative.headline && <p className="text-sm font-medium">{creative.headline}</p>}
+              {creative.primary_text && <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-[var(--text-2)]">{creative.primary_text}</p>}
               {creative.cta_type && (
-                <p className="text-xs text-neutral-500">CTA button: {creative.cta_type.replaceAll('_', ' ').toLowerCase()}</p>
+                <p className="mt-3"><Badge>{creative.cta_type.replaceAll('_', ' ').toLowerCase()}</Badge></p>
               )}
-            </div>
+            </Card>
           )}
         </section>
 
-        <section className="min-w-0">
-          <h2 className="text-lg font-semibold">{perf?.name ?? 'Ad'}</h2>
-          <p className="mt-1 text-sm text-neutral-500">
-            {[
-              perf?.status?.toLowerCase(),
-              isVideo ? `video${creative?.duration_s ? ` · ${fmt.seconds(creative.duration_s)}` : ''}` : creative?.type,
-              perf?.first_date && perf.last_date ? `${perf.first_date} → ${perf.last_date}` : null,
-              perf?.external_id,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </p>
-
+        <section className="min-w-0 space-y-6">
           {perf && (
-            <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Kpi label="Spend" value={fmt.money(perf.spend)} />
-              <Kpi label="ROAS" value={fmt.ratio(perf.roas)} />
-              <Kpi label="CPA" value={fmt.money(perf.cpa)} />
-              <Kpi label="Purchases" value={fmt.int(perf.purchases)} />
-              <Kpi label="Impressions" value={fmt.compact(perf.impressions)} />
-              <Kpi label="CTR" value={fmt.pct(perf.ctr)} />
-              <Kpi label="Hook rate" value={isVideo ? fmt.pct(perf.hook_rate, 1) : '—'} />
-              <Kpi label="Hold rate" value={isVideo ? fmt.pct(perf.hold_rate, 1) : '—'} />
+            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <Stat label="Spend" value={fmt.money(perf.spend)} />
+              <Stat label="ROAS" value={fmt.ratio(perf.roas)} />
+              <Stat label="CPA" value={fmt.money(perf.cpa)} />
+              <Stat label="Purchases" value={fmt.int(perf.purchases)} />
+              <Stat label="Impressions" value={fmt.compact(perf.impressions)} />
+              <Stat label="CTR" value={fmt.pct(perf.ctr)} />
+              <Stat label="Hook rate" value={isVideo ? fmt.pct(perf.hook_rate, 1) : '—'} />
+              <Stat label="Hold rate" value={isVideo ? fmt.pct(perf.hold_rate, 1) : '—'} />
             </dl>
           )}
 
-          <div className="mt-8">
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-sm font-medium">{active.label} by day</h3>
-              <div className="flex gap-1 rounded-md bg-neutral-100 p-0.5 text-xs" role="tablist" aria-label="Chart metric">
-                {metrics.map((m) => (
-                  <button
-                    key={m.key}
-                    type="button"
-                    role="tab"
-                    aria-selected={m.key === active.key}
-                    onClick={() => setMetric(m.key)}
-                    className={`rounded px-2 py-1 ${m.key === active.key ? 'bg-white font-medium shadow-sm' : 'text-neutral-600 hover:text-neutral-900'}`}
-                  >
-                    {m.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+          <Card>
+            <CardTitle aside={
+              <Segmented label="Chart metric" value={active.key} onChange={setMetric}
+                options={metrics.map((m) => [m.key, m.label] as const)} />
+            }>{active.label} by day</CardTitle>
             <LineChart points={points} format={active.format} tickFormat={active.tick} label={active.label} />
-          </div>
+          </Card>
 
-          {!readOnly && (
-          <div className="mt-8">
-            <h3 className="mb-2 text-sm font-medium">Custom tags</h3>
-            {custom.data && custom.data.all.length === 0 ? (
-              <p className="text-sm text-neutral-500">
-                No custom tags yet. Create them in <Link to={`/app/w/${id}/settings`} className="underline">Settings</Link>.
-              </p>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {(custom.data?.all ?? []).map((t) => {
-                  const on = custom.data?.applied.has(t.id) ?? false
-                  return (
-                    <button key={t.id} type="button" aria-pressed={on} onClick={() => void toggleTag(t.id, !on)}
-                      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs ${on ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-300 text-neutral-700 hover:border-neutral-500'}`}>
-                      <span className="h-2 w-2 rounded-full" style={{ background: t.color ?? '#a3a3a3' }} aria-hidden />
-                      {t.name}
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-            {tagError && <p className="mt-2 text-xs text-red-700">{tagError}</p>}
-          </div>
-          )}
-
-          <div className="mt-8">
-            <h3 className="mb-2 text-sm font-medium">Tags</h3>
+          <Card>
+            <CardTitle icon={<Sparkles size={15} />}>Tags</CardTitle>
             {tags.length === 0 ? (
-              <p className="text-sm text-neutral-500">
+              <p className="text-sm text-[var(--muted)]">
                 {creative?.perception_status === 'pending' || creative?.perception_status === 'processing'
                   ? 'This ad is queued for breakdown.'
                   : creative?.perception_status === 'failed'
@@ -248,42 +206,60 @@ export function AdDetail() {
                     : 'No tags yet.'}
               </p>
             ) : (
-              <table className="w-full text-left text-sm">
-                <thead className="text-xs text-neutral-500">
-                  <tr>
-                    <th className="py-1 font-normal">Dimension</th>
-                    <th className="font-normal">Value</th>
-                    <th className="font-normal">Confidence</th>
-                    <th className="font-normal">Source</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortTags(tags).map((t) => (
-                    <tr key={`${t.dimension_key}-${t.source}-${t.value}`} className="border-t border-neutral-100">
-                      <td className="py-1.5 text-neutral-600">{DIMENSION_LABEL[t.dimension_key] ?? t.dimension_key}</td>
-                      <td>{t.value}</td>
-                      <td className="tabular-nums text-neutral-600">{t.confidence == null || t.model === 'synthetic' ? '—' : `${Math.round(t.confidence * 100)}%`}</td>
-                      <td className="text-neutral-600">{t.source === 'user' ? 'You' : t.model === 'synthetic' ? 'Synthetic' : 'AI'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+                {sortTags(tags).map((t) => (
+                  <div key={`${t.dimension_key}-${t.source}-${t.value}`} className="flex items-baseline justify-between gap-3 border-b border-[var(--line)] pb-2.5">
+                    <dt className="text-xs text-[var(--muted)]">{DIMENSION_LABEL[t.dimension_key] ?? t.dimension_key}</dt>
+                    <dd className="flex min-w-0 items-center gap-2 text-right text-sm">
+                      <span className="truncate">{t.value}</span>
+                      <span className="shrink-0 font-mono text-[10px] text-[var(--faint)]" title={t.source === 'user' ? 'Set by you' : t.model === 'synthetic' ? 'Synthetic ground truth' : `AI · ${t.model ?? ''}`}>
+                        {t.source === 'user' ? 'you' : t.model === 'synthetic' ? 'synthetic' : t.confidence == null ? 'ai' : `${Math.round(t.confidence * 100)}%`}
+                      </span>
+                    </dd>
+                  </div>
+                ))}
+              </dl>
             )}
-          </div>
+          </Card>
 
-          <div className="mt-8">
-            <h3 className="mb-2 text-sm font-medium">Scenes</h3>
+          {!readOnly && (
+            <Card>
+              <CardTitle>Custom tags</CardTitle>
+              {custom.data && custom.data.all.length === 0 ? (
+                <p className="text-sm text-[var(--muted)]">
+                  No custom tags yet. Create them in <Link to={`/app/w/${id}/settings`} className="text-[var(--accent-2)] hover:text-[var(--text)]">Settings</Link>.
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {(custom.data?.all ?? []).map((t) => {
+                    const on = custom.data?.applied.has(t.id) ?? false
+                    return (
+                      <button key={t.id} type="button" aria-pressed={on} onClick={() => void toggleTag(t.id, !on)}
+                        className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition ${on ? 'border-[var(--accent)]/60 bg-[var(--accent-soft)] text-[var(--text)]' : 'border-[var(--line-strong)] text-[var(--muted)] hover:text-[var(--text)]'}`}>
+                        <span className="h-2 w-2 rounded-full" style={{ background: t.color ?? '#a3a3a3' }} aria-hidden />
+                        {t.name}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+              {tagError && <div className="mt-3"><ErrorText>{tagError}</ErrorText></div>}
+            </Card>
+          )}
+
+          <Card>
+            <CardTitle icon={<Film size={15} />} aside={scenes.length > 0 && `${scenes.length} scenes`}>Scenes</CardTitle>
             {scenes.length === 0 ? (
-              <p className="text-sm text-neutral-500">
-                {isVideo ? 'Scene breakdown appears once the video has been processed.' : 'Static ads have no scenes.'}
+              <p className="text-sm text-[var(--muted)]">
+                {isVideo ? 'The scene breakdown appears once the video has been processed.' : 'Static ads have no scenes.'}
               </p>
             ) : (
               <SceneTimeline scenes={scenes} urls={urls} duration={Number(creative?.duration_s ?? scenes[scenes.length - 1]?.end_s ?? 0)} />
             )}
-          </div>
+          </Card>
         </section>
       </div>
-    </main>
+    </>
   )
 }
 
@@ -291,33 +267,34 @@ function SceneTimeline({ scenes, urls, duration }: { scenes: Scene[]; urls: Reco
   const total = duration > 0 ? duration : 1
   return (
     <div>
-      <div className="flex h-3 w-full gap-0.5 overflow-hidden rounded" aria-hidden>
+      <div className="flex h-2 w-full gap-0.5 overflow-hidden rounded-full" aria-hidden>
         {scenes.map((s) => (
           <div
             key={s.id}
-            className={s.idx === 0 ? 'bg-[var(--series-1,#2a78d6)]' : 'bg-neutral-300'}
+            className={s.idx === 0 ? 'bg-[var(--accent)]' : 'bg-white/15'}
             style={{ width: `${((Number(s.end_s) - Number(s.start_s)) / total) * 100}%` }}
             title={`Scene ${s.idx + 1}: ${Number(s.start_s).toFixed(1)}s to ${Number(s.end_s).toFixed(1)}s`}
           />
         ))}
       </div>
-      <p className="mt-1 text-xs text-neutral-500">The first scene is the hook (0 to 3 s).</p>
-      <ol className="mt-4 space-y-3">
+      <p className="mt-2 text-xs text-[var(--faint)]">The first scene is the hook (0 to 3 s).</p>
+      <ol className="mt-5 space-y-4">
         {scenes.map((s) => (
-          <li key={s.id} className="flex gap-3">
-            <div className="h-20 w-16 shrink-0 overflow-hidden rounded bg-neutral-100">
+          <li key={s.id} className="flex gap-4">
+            <div className="h-24 w-[4.5rem] shrink-0 overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--panel-2)]">
               {s.keyframe_path && urls[s.keyframe_path] && (
                 <img src={urls[s.keyframe_path]} alt="" className="h-full w-full object-cover" loading="lazy" />
               )}
             </div>
             <div className="min-w-0 text-sm">
-              <p className="text-xs text-neutral-500">
-                {s.idx === 0 ? 'Hook · ' : ''}
-                {Number(s.start_s).toFixed(1)}s to {Number(s.end_s).toFixed(1)}s{s.broll_type ? ` · ${s.broll_type}` : ''}
+              <p className="flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]">
+                {s.idx === 0 && <Badge tone="accent">Hook</Badge>}
+                <span className="font-mono">{Number(s.start_s).toFixed(1)}s – {Number(s.end_s).toFixed(1)}s</span>
+                {s.broll_type && <span>· {s.broll_type}</span>}
               </p>
-              {s.transcript && <p className="mt-0.5">“{s.transcript}”</p>}
-              {s.on_screen_text && <p className="mt-0.5 text-neutral-600">On screen: {s.on_screen_text}</p>}
-              {s.visual_description && <p className="mt-0.5 text-neutral-500">{s.visual_description}</p>}
+              {s.transcript && <p className="mt-1.5 leading-relaxed">“{s.transcript}”</p>}
+              {s.on_screen_text && <p className="mt-1 text-[var(--text-2)]"><span className="text-[var(--faint)]">On screen: </span>{s.on_screen_text}</p>}
+              {s.visual_description && <p className="mt-1 text-[var(--muted)]">{s.visual_description}</p>}
             </div>
           </li>
         ))}
@@ -333,13 +310,4 @@ function sortTags(tags: CreativeTag[]): CreativeTag[] {
     return i === -1 ? order.length : i
   }
   return [...tags].sort((a, b) => rank(a.dimension_key) - rank(b.dimension_key) || a.value.localeCompare(b.value))
-}
-
-function Kpi({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-neutral-200 p-3">
-      <dt className="text-xs text-neutral-500">{label}</dt>
-      <dd className="mt-0.5 text-lg font-semibold tabular-nums">{value}</dd>
-    </div>
-  )
 }

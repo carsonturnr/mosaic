@@ -11,7 +11,7 @@ export function DemoEntry() {
   }, [])
   if (demo.data) return <Navigate to={`/demo/w/${demo.data}/library`} replace />
   return (
-    <main className="flex min-h-screen items-center justify-center p-6 text-sm text-neutral-500">
+    <main className="app flex min-h-screen items-center justify-center p-6 text-sm text-[var(--muted)]">
       {demo.error ?? (demo.loading ? 'Loading the demo…' : 'The demo is not available right now.')}
     </main>
   )

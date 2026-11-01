@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { WorkspaceNav } from '../components/WorkspaceNav'
+import { Download, Image as ImageIcon, PenLine, Quote, RefreshCw, ShieldCheck, Sparkles, TriangleAlert } from 'lucide-react'
+import { AdRef, Badge, Button, Callout, Card, CardTitle, EmptyState, ErrorText, Loading, PageHeader, SectionTitle, Table } from '../components/ui'
 import { supabase } from '../lib/supabase'
 import { useAgentJob } from '../lib/useAgentJob'
 import { useAsync } from '../lib/useAsync'
@@ -18,15 +19,13 @@ interface BriefSet { briefs: Brief[]; hook_list: string[]; static_directions: St
 interface Row { id: string; created_at: string; grounding_passed: boolean | null; content: BriefSet; input_snapshot: { request?: string | null; cost_usd?: number } | null }
 
 async function load(id: string) {
-  const [ws, rows, ads] = await Promise.all([
-    supabase.from('workspaces').select('name').eq('id', id).single(),
+  const [rows, ads] = await Promise.all([
     supabase.from('reports').select('id, created_at, grounding_passed, content, input_snapshot')
       .eq('workspace_id', id).eq('kind', 'brief').order('created_at', { ascending: false }).limit(1),
     supabase.from('ads').select('id, external_id').eq('workspace_id', id),
   ])
   if (rows.error) throw new Error(rows.error.message)
   return {
-    name: ws.data?.name,
     row: (rows.data?.[0] ?? null) as unknown as Row | null,
     byRef: new Map((ads.data ?? []).map((a) => [a.external_id, a.id])),
   }
@@ -58,131 +57,143 @@ export function Briefs() {
   const set = row?.content
 
   return (
-    <main className="mx-auto max-w-4xl p-6">
-      <WorkspaceNav id={id} name={data.data?.name ?? undefined} />
+    <div className="mx-auto max-w-4xl">
+      <PageHeader
+        title="Briefs"
+        description="Scripts, hook lines, static directions and a test plan, built from what's winning in this account."
+        meta={row && <>
+          {new Date(row.created_at).toLocaleString()}
+          {row.input_snapshot?.request ? ` · “${row.input_snapshot.request}”` : ''}
+        </>}
+      />
 
-      {!readOnly && (
-      <section className="mb-8 rounded-lg border border-neutral-200 p-4">
-        <label className="flex flex-col gap-1.5 text-sm">
-          <span className="font-medium">What should the next round focus on? <span className="font-normal text-neutral-500">(optional)</span></span>
-          <textarea rows={2} value={request} onChange={(e) => setRequest(e.target.value)}
-            placeholder="e.g. Iterate on our best UGC hook and try one comparison angle."
-            className="rounded-md border border-neutral-300 px-3 py-2" />
-        </label>
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="text-xs text-neutral-500">
-            Uses your brand guidelines from <Link to={`/app/w/${id}/settings`} className="underline">Settings</Link> and the latest report.
-          </p>
-          <button type="button" onClick={() => void job.start(request.trim() || undefined)} disabled={busy}
-            className="shrink-0 rounded-md bg-neutral-900 px-3 py-2 text-sm text-white disabled:opacity-50">
-            {busy ? 'Writing briefs… (about two minutes)' : 'Write briefs'}
-          </button>
-        </div>
-        {error && <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}
-      </section>
-      )}
+      <div className="space-y-6">
+        {!readOnly && (
+          <Card>
+            <label className="flex flex-col gap-2 text-sm">
+              <span className="font-medium">What should the next round focus on? <span className="font-normal text-[var(--faint)]">Optional</span></span>
+              <textarea rows={2} value={request} onChange={(e) => setRequest(e.target.value)}
+                placeholder="e.g. Iterate on our best UGC hook and try one comparison angle."
+                className="px-3 py-2 text-sm" />
+            </label>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs text-[var(--muted)]">
+                Follows your brand guidelines from <Link to={`/app/w/${id}/settings`} className="text-[var(--accent-2)] hover:text-[var(--text)]">Settings</Link> and the latest report.
+              </p>
+              <Button variant="primary" onClick={() => void job.start(request.trim() || undefined)} disabled={busy}>
+                {busy ? <RefreshCw size={15} className="animate-spin" /> : <Sparkles size={15} />}
+                {busy ? 'Writing… about two minutes' : 'Write briefs'}
+              </Button>
+            </div>
+            {error && <div className="mt-3"><ErrorText>{error}</ErrorText></div>}
+          </Card>
+        )}
 
-      {data.loading && !data.data && <p className="text-sm text-neutral-500">Loading…</p>}
-      {data.data && !set && <p className="text-sm text-neutral-600">{readOnly ? 'No briefs have been written for this demo yet.' : 'No briefs yet.'}</p>}
+        {data.loading && !data.data && <Loading />}
+        {data.data && !set && (
+          <EmptyState icon={<PenLine size={18} />} title="No briefs yet">
+            {readOnly ? 'No briefs have been written for this demo yet.' : 'Write a set from the latest analysis.'}
+          </EmptyState>
+        )}
 
-      {row && set && (
-        <>
-          <p className="mb-6 text-sm text-neutral-500">
-            {new Date(row.created_at).toLocaleString()}
-            {row.input_snapshot?.request ? ` · “${row.input_snapshot.request}”` : ''}
-            {' · '}
-            <span className={row.grounding_passed ? 'text-emerald-700' : 'text-amber-700'}>
-              {row.grounding_passed ? 'evidence checked against your data' : 'some evidence did not match the data'}
-            </span>
-          </p>
+        {row && set && (
+          <>
+            <Callout tone={row.grounding_passed ? 'good' : 'warn'} icon={row.grounding_passed ? <ShieldCheck size={16} className="text-[var(--good)]" /> : <TriangleAlert size={16} className="text-[var(--warn)]" />}>
+              {row.grounding_passed ? 'The evidence behind each brief was checked against your data.' : 'Some evidence did not match the data.'}
+            </Callout>
 
-          <div className="space-y-6">
             {set.briefs.map((b, i) => (
-              <article key={i} className="rounded-lg border border-neutral-200 p-5">
-                <h3 className="text-base font-semibold">{b.title}</h3>
-                <p className="mt-1 text-sm text-neutral-600">{b.why}</p>
-                <dl className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-neutral-600">
-                  {[['Hook', b.hook_type], ['Angle', b.angle], ['Format', b.format], ['Persona', b.persona], ['Length', `${b.length_seconds}s`], ['CTA', b.cta]].map(([k, v]) => (
-                    <div key={k}><dt className="inline text-neutral-400">{k} </dt><dd className="inline">{v}</dd></div>
-                  ))}
-                </dl>
-                <p className="mt-4 text-sm"><span className="text-neutral-500">Opening line: </span>“{b.hook_line}”</p>
-                <div className="mt-3 overflow-x-auto">
+              <article key={i} className="rounded-xl border border-[var(--line)] bg-[var(--panel)]">
+                <div className="p-5">
+                  <p className="font-mono text-[11px] text-[var(--accent-2)]">Brief {String(i + 1).padStart(2, '0')}</p>
+                  <h2 className="mt-1 text-lg font-semibold tracking-[-0.01em]">{b.title}</h2>
+                  <p className="mt-1.5 text-sm leading-relaxed text-[var(--muted)]">{b.why}</p>
+                  <div className="mt-4 flex flex-wrap gap-1.5">
+                    {[['Hook', b.hook_type], ['Angle', b.angle], ['Format', b.format], ['Persona', b.persona], ['Length', `${b.length_seconds}s`], ['CTA', b.cta]].map(([k, v]) => (
+                      <Badge key={k}><span className="font-normal text-[var(--faint)]">{k}</span> {v}</Badge>
+                    ))}
+                  </div>
+                  <blockquote className="mt-5 border-l-2 border-[var(--accent)] pl-4 font-serif text-xl italic leading-snug text-[var(--text)]">“{b.hook_line}”</blockquote>
+                </div>
+                <div className="overflow-x-auto border-t border-[var(--line)]">
                   <table className="w-full min-w-[560px] text-left text-sm">
-                    <thead className="text-xs text-neutral-500">
-                      <tr><th className="py-1 pr-3 font-normal">Time</th><th className="pr-3 font-normal">Visual</th><th className="pr-3 font-normal">Voiceover</th><th className="font-normal">On screen</th></tr>
+                    <thead className="text-[11px] uppercase tracking-wide text-[var(--faint)]">
+                      <tr><th className="px-5 py-2.5 font-medium">Time</th><th className="pr-4 font-medium">Visual</th><th className="pr-4 font-medium">Voiceover</th><th className="pr-5 font-medium">On screen</th></tr>
                     </thead>
                     <tbody>
                       {b.script.map((s, j) => (
-                        <tr key={j} className="border-t border-neutral-100 align-top">
-                          <td className="py-1.5 pr-3 font-mono text-xs text-neutral-500">{s.seconds}s</td>
-                          <td className="pr-3">{s.visual}</td>
-                          <td className="pr-3">{s.voiceover}</td>
-                          <td className="text-neutral-600">{s.on_screen_text}</td>
+                        <tr key={j} className="border-t border-[var(--line)] align-top">
+                          <td className="whitespace-nowrap px-5 py-2.5 font-mono text-xs text-[var(--accent-2)]">{s.seconds}s</td>
+                          <td className="py-2.5 pr-4 text-[var(--text-2)]">{s.visual}</td>
+                          <td className="py-2.5 pr-4">{s.voiceover}</td>
+                          <td className="py-2.5 pr-5 text-[var(--muted)]">{s.on_screen_text}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
                 {b.based_on_ads.length > 0 && (
-                  <p className="mt-3 flex flex-wrap gap-1.5 text-xs">
-                    <span className="text-neutral-500">Builds on</span>
+                  <p className="flex flex-wrap items-center gap-1.5 border-t border-[var(--line)] px-5 py-3 text-xs">
+                    <span className="text-[var(--faint)]">Builds on</span>
                     {b.based_on_ads.map((ref) => {
                       const adId = data.data!.byRef.get(ref)
-                      return adId ? (
-                        <Link key={ref} to={`${base}/w/${id}/ads/${adId}`} className="rounded border border-neutral-300 px-1.5 font-mono hover:bg-neutral-50">{ref}</Link>
-                      ) : <span key={ref} className="font-mono text-red-700">{ref}</span>
+                      return <AdRef key={ref} to={adId ? `${base}/w/${id}/ads/${adId}` : undefined}>{ref}</AdRef>
                     })}
                   </p>
                 )}
               </article>
             ))}
-          </div>
 
-          <section className="mt-10 grid gap-6 md:grid-cols-2">
-            <div>
-              <h3 className="mb-2 text-sm font-semibold">Hook lines</h3>
-              <ol className="list-decimal space-y-1 pl-5 text-sm">{set.hook_list.map((h, i) => <li key={i}>{h}</li>)}</ol>
+            <div className="grid gap-6 md:grid-cols-2">
+              <Card>
+                <CardTitle icon={<Quote size={15} />}>Hook lines</CardTitle>
+                <ol className="space-y-2.5 text-sm">
+                  {set.hook_list.map((h, i) => (
+                    <li key={i} className="flex gap-3">
+                      <span className="font-mono text-xs text-[var(--faint)]">{String(i + 1).padStart(2, '0')}</span>
+                      <span className="text-[var(--text-2)]">{h}</span>
+                    </li>
+                  ))}
+                </ol>
+              </Card>
+              <Card>
+                <CardTitle icon={<ImageIcon size={15} />}>Static directions</CardTitle>
+                <ul className="space-y-4 text-sm">
+                  {set.static_directions.map((s, i) => (
+                    <li key={i}>
+                      <p className="font-medium">{s.title}</p>
+                      <p className="mt-0.5 text-[var(--accent-2)]">“{s.headline}”</p>
+                      <p className="mt-1 text-[var(--text-2)]">{s.visual}</p>
+                      <p className="mt-1 text-[var(--muted)]">{s.primary_text}</p>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
             </div>
-            <div>
-              <h3 className="mb-2 text-sm font-semibold">Static directions</h3>
-              <ul className="space-y-3 text-sm">
-                {set.static_directions.map((s, i) => (
-                  <li key={i}>
-                    <p className="font-medium">{s.title}: “{s.headline}”</p>
-                    <p className="text-neutral-600">{s.visual}</p>
-                    <p className="text-neutral-500">{s.primary_text}</p>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </section>
 
-          <section className="mt-10">
-            <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">Test plan</h3>
-              <button type="button" onClick={() => download('mosaic-test-plan.csv', csv(set.test_plan))}
-                className="rounded-md border border-neutral-300 px-2.5 py-1 text-xs hover:bg-neutral-50">Download CSV</button>
-            </div>
-            <div className="overflow-x-auto rounded-lg border border-neutral-200">
-              <table className="w-full min-w-[640px] text-left text-sm">
-                <thead className="bg-neutral-50 text-xs text-neutral-500">
-                  <tr><th className="px-3 py-2 font-normal">Brief</th><th className="px-3 font-normal">Hypothesis</th><th className="px-3 font-normal">Metric</th><th className="px-3 text-right font-normal">Budget/day</th><th className="px-3 text-right font-normal">Days</th><th className="px-3 font-normal">Success</th></tr>
-                </thead>
+            <section>
+              <SectionTitle aside={
+                <Button size="sm" onClick={() => download('mosaic-test-plan.csv', csv(set.test_plan))}><Download size={13} /> CSV</Button>
+              }>Test plan</SectionTitle>
+              <Table minWidth={640}>
+                <thead><tr><th>Brief</th><th>Hypothesis</th><th>Metric</th><th className="text-right">Budget/day</th><th className="text-right">Days</th><th>Success</th></tr></thead>
                 <tbody>
                   {set.test_plan.map((t, i) => (
-                    <tr key={i} className="border-t border-neutral-100 align-top">
-                      <td className="px-3 py-2 font-medium">{t.brief_title}</td><td className="px-3 py-2">{t.hypothesis}</td>
-                      <td className="px-3 py-2">{t.primary_metric}</td><td className="px-3 py-2 text-right tabular-nums">${t.daily_budget_usd}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{t.days}</td><td className="px-3 py-2 text-neutral-600">{t.success_criterion}</td>
+                    <tr key={i} className="align-top">
+                      <td className="font-medium">{t.brief_title}</td>
+                      <td className="text-[var(--text-2)]">{t.hypothesis}</td>
+                      <td><Badge>{t.primary_metric}</Badge></td>
+                      <td className="text-right font-mono">${t.daily_budget_usd}</td>
+                      <td className="text-right font-mono">{t.days}</td>
+                      <td className="text-[var(--muted)]">{t.success_criterion}</td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
-            </div>
-          </section>
-        </>
-      )}
-    </main>
+              </Table>
+            </section>
+          </>
+        )}
+      </div>
+    </div>
   )
 }

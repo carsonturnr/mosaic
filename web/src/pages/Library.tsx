@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { WorkspaceNav } from '../components/WorkspaceNav'
+import { Image as ImageIcon, LayoutGrid, Play, X } from 'lucide-react'
+import { buttonClass } from '../components/buttonClass'
+import { Badge, Button, EmptyState, ErrorText, Loading, PageHeader, SelectField } from '../components/ui'
 import { fmt } from '../lib/format'
 import {
   fetchPerformance,
@@ -12,7 +14,6 @@ import {
   type CreativeTag,
   type Window,
 } from '../lib/library'
-import { supabase } from '../lib/supabase'
 import { fetchAdCustomTags, fetchCustomTags, type CustomTag as UserTag } from '../lib/taxonomy'
 import { useAsync } from '../lib/useAsync'
 import { useWorkspaceMode } from '../lib/workspaceBase'
@@ -32,7 +33,6 @@ type TagFilterKey = (typeof TAG_FILTERS)[number]
 const TAG_LABEL: Record<TagFilterKey, string> = { format: 'Format', hook_type: 'Hook', angle: 'Angle' }
 
 interface LibraryData {
-  workspaceName: string | undefined
   ads: AdPerf[]
   tags: Map<string, Map<string, CreativeTag>>
   thumbs: Record<string, string>
@@ -41,10 +41,7 @@ interface LibraryData {
 }
 
 async function loadLibrary(id: string, w: Window): Promise<LibraryData> {
-  const [ws, ads] = await Promise.all([
-    supabase.from('workspaces').select('name').eq('id', id).single(),
-    fetchPerformance(id, w),
-  ])
+  const ads = await fetchPerformance(id, w)
   const creativeIds = ads.map((a) => a.creative_id).filter((c): c is string => !!c)
   const [tags, thumbs, userTags, applied] = await Promise.all([
     fetchTags(creativeIds),
@@ -54,7 +51,7 @@ async function loadLibrary(id: string, w: Window): Promise<LibraryData> {
   ])
   const adUserTags = new Map<string, Set<string>>()
   for (const a of applied) adUserTags.set(a.ad_id, (adUserTags.get(a.ad_id) ?? new Set()).add(a.custom_tag_id))
-  return { workspaceName: ws.data?.name, ads, tags: tagsByCreative(tags), thumbs, userTags, adUserTags }
+  return { ads, tags: tagsByCreative(tags), thumbs, userTags, adUserTags }
 }
 
 export function Library() {
@@ -111,65 +108,67 @@ export function Library() {
   const filtersActive = type !== 'all' || !!userTag || TAG_FILTERS.some((k) => tagFilter[k])
 
   return (
-    <main className="mx-auto max-w-6xl p-6">
-      <WorkspaceNav id={id} name={data?.workspaceName} />
+    <>
+      <PageHeader title="Library" description="Every ad with its tags and results. Click one for the scene-by-scene breakdown." />
 
-      <div className="mb-4 flex flex-wrap items-end gap-3 text-sm">
-        <Select label="Window" value={win} onChange={(v) => setWin(v as Window)}
+      <div className="mb-5 flex flex-wrap items-end gap-3 rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3">
+        <SelectField label="Window" value={win} onChange={(v) => setWin(v as Window)}
           options={[['all', 'All time'], ['90', 'Last 90 days'], ['30', 'Last 30 days'], ['7', 'Last 7 days']]} />
-        <Select label="Type" value={type} onChange={(v) => setType(v as TypeFilter)}
+        <SelectField label="Type" value={type} onChange={(v) => setType(v as TypeFilter)}
           options={[['all', 'All'], ['video', 'Video'], ['image', 'Static']]} />
         {TAG_FILTERS.map((k) => (
-          <Select key={k} label={TAG_LABEL[k]} value={tagFilter[k]}
+          <SelectField key={k} label={TAG_LABEL[k]} value={tagFilter[k]}
             onChange={(v) => setTagFilter((f) => ({ ...f, [k]: v }))}
             options={[['', 'Any'], ...tagOptions[k].map((o): [string, string] => [o, o])]} />
         ))}
         {data && data.userTags.length > 0 && (
-          <Select label="Custom tag" value={userTag} onChange={setUserTag}
+          <SelectField label="Custom tag" value={userTag} onChange={setUserTag}
             options={[['', 'Any'], ...data.userTags.map((t): [string, string] => [t.id, t.name])]} />
         )}
-        <Select label="Sort by" value={sort} onChange={(v) => setSort(v as SortKey)}
-          options={SORTS.map((s): [string, string] => [s.key, s.label])} />
-        {filtersActive && (
-          <button type="button" className="pb-2 text-neutral-500 underline hover:text-neutral-900"
-            onClick={() => { setType('all'); setUserTag(''); setTagFilter({ format: '', hook_type: '', angle: '' }) }}>
-            Clear filters
-          </button>
-        )}
+        <div className="ml-auto flex items-end gap-2">
+          {filtersActive && (
+            <Button variant="ghost" size="sm" className="mb-0.5"
+              onClick={() => { setType('all'); setUserTag(''); setTagFilter({ format: '', hook_type: '', angle: '' }) }}>
+              <X size={13} /> Clear
+            </Button>
+          )}
+          <SelectField label="Sort by" value={sort} onChange={(v) => setSort(v as SortKey)}
+            options={SORTS.map((s): [string, string] => [s.key, s.label])} />
+        </div>
       </div>
 
-      {error && <p className="mb-4 text-sm text-red-700">{error}</p>}
+      {error && <div className="mb-4"><ErrorText>{error}</ErrorText></div>}
 
-      {data && (
-        <p className="mb-4 text-sm text-neutral-600">
-          <span className="font-medium text-neutral-900">{visible.length}</span> of {data.ads.length} ads ·{' '}
-          <span className="font-medium text-neutral-900">{fmt.money(summary.spend)}</span> spend · ROAS{' '}
-          <span className="font-medium text-neutral-900">{fmt.ratio(summary.roas)}</span> · CPA{' '}
-          <span className="font-medium text-neutral-900">{fmt.money(summary.cpa)}</span>
+      {data && data.ads.length > 0 && (
+        <p className="mb-4 flex flex-wrap gap-x-5 gap-y-1 text-sm text-[var(--muted)]">
+          <span><span className="font-mono text-[var(--text)]">{visible.length}</span> of {data.ads.length} ads</span>
+          <span><span className="font-mono text-[var(--text)]">{fmt.money(summary.spend)}</span> spend</span>
+          <span><span className="font-mono text-[var(--text)]">{fmt.ratio(summary.roas)}</span> ROAS</span>
+          <span><span className="font-mono text-[var(--text)]">{fmt.money(summary.cpa)}</span> CPA</span>
         </p>
       )}
 
-      {loading && !data && <p className="text-sm text-neutral-500">Loading ads…</p>}
+      {loading && !data && <Loading label="Loading ads…" />}
 
       {data && data.ads.length === 0 && (
-        <div className="rounded-lg border border-dashed border-neutral-300 p-10 text-center text-sm text-neutral-600">
-          No ads yet. Connect a Meta ad account on the{' '}
-          <Link to={`${base}/w/${id}`} className="underline">Overview</Link> tab and run a sync.
-        </div>
+        <EmptyState icon={<LayoutGrid size={18} />} title="No ads yet"
+          action={<Link to={`${base}/w/${id}`} className={buttonClass('secondary')}>Go to Overview</Link>}>
+          Connect a Meta ad account on the Overview page and run a sync. Ads appear here with their tags and results.
+        </EmptyState>
       )}
 
       {data && data.ads.length > 0 && visible.length === 0 && (
-        <p className="text-sm text-neutral-600">No ads match these filters.</p>
+        <EmptyState title="No ads match these filters" />
       )}
 
-      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
         {data && visible.map((ad) => (
           <AdCard key={ad.ad_id} ad={ad} workspaceId={id}
             userTags={data.userTags.filter((t) => data.adUserTags.get(ad.ad_id)?.has(t.id))}
             tags={data.tags.get(ad.creative_id ?? '')} thumb={ad.thumbnail_path ? data.thumbs[ad.thumbnail_path] : undefined} />
         ))}
       </ul>
-    </main>
+    </>
   )
 }
 
@@ -188,42 +187,39 @@ function AdCard({ ad, tags, thumb, workspaceId, userTags }: {
   const isVideo = ad.creative_type === 'video'
 
   return (
-    <li className="overflow-hidden rounded-lg border border-neutral-200 bg-white transition hover:border-neutral-400">
-      <Link to={`${base}/w/${workspaceId}/ads/${ad.ad_id}`} className="block">
-        <div className="relative aspect-[4/5] bg-neutral-100">
+    <li>
+      <Link to={`${base}/w/${workspaceId}/ads/${ad.ad_id}`}
+        className="group block overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--panel)] transition hover:-translate-y-0.5 hover:border-[var(--line-strong)] hover:shadow-xl hover:shadow-black/40">
+        <div className="relative aspect-[4/5] bg-gradient-to-br from-[#1d1838] to-[#2c2552]">
           {thumb ? (
-            <img src={thumb} alt="" className="h-full w-full object-cover" loading="lazy" />
+            <img src={thumb} alt="" className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]" loading="lazy" />
           ) : (
-            <div className="flex h-full flex-col items-center justify-center gap-1 text-neutral-400">
-              <span className="text-3xl" aria-hidden>{isVideo ? '▶' : '▦'}</span>
-              <span className="text-xs">{isVideo ? 'Video' : 'Static'}{isVideo && ad.duration_s ? ` · ${fmt.seconds(ad.duration_s)}` : ''}</span>
+            <div className="flex h-full flex-col items-center justify-center gap-1.5 text-white/40">
+              {isVideo ? <Play size={22} /> : <ImageIcon size={22} />}
+              <span className="text-xs">{isVideo ? 'Video' : 'Static'}</span>
             </div>
           )}
-          <div className="absolute left-2 top-2 flex gap-1">
-            {ad.status && ad.status !== 'ACTIVE' && (
-              <span className="rounded bg-white/90 px-1.5 py-0.5 text-[11px] text-neutral-700">{ad.status.toLowerCase()}</span>
-            )}
-            {lowData && (
-              <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] text-amber-800" title={`Fewer than ${LOW_DATA_IMPRESSIONS.toLocaleString()} impressions`}>
-                low data
-              </span>
-            )}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/60 to-transparent" aria-hidden />
+          <div className="absolute left-2 top-2 flex flex-wrap gap-1">
+            {ad.status && ad.status !== 'ACTIVE' && <Badge className="bg-black/60 text-white/80 backdrop-blur">{ad.status.toLowerCase()}</Badge>}
+            {lowData && <Badge tone="warn" className="bg-black/60 backdrop-blur" title={`Fewer than ${LOW_DATA_IMPRESSIONS.toLocaleString()} impressions`}>low data</Badge>}
           </div>
+          {isVideo && ad.duration_s != null && (
+            <span className="absolute bottom-2 right-2 rounded bg-black/60 px-1.5 py-0.5 font-mono text-[10px] text-white/90 backdrop-blur">{fmt.seconds(ad.duration_s)}</span>
+          )}
         </div>
         <div className="p-3">
           <p className="truncate text-sm font-medium" title={ad.name ?? ''}>{ad.name ?? ad.external_id}</p>
           <div className="mt-1.5 flex min-h-5 flex-wrap gap-1">
-            {chips.map((c) => (
-              <span key={c} className="rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] text-neutral-700">{c}</span>
-            ))}
+            {chips.map((c) => <Badge key={c}>{c}</Badge>)}
             {userTags.map((t) => (
-              <span key={t.id} className="flex items-center gap-1 rounded border border-neutral-200 px-1.5 py-0.5 text-[11px] text-neutral-700">
+              <Badge key={t.id}>
                 <span className="h-1.5 w-1.5 rounded-full" style={{ background: t.color ?? '#a3a3a3' }} aria-hidden />
                 {t.name}
-              </span>
+              </Badge>
             ))}
           </div>
-          <dl className="mt-3 grid grid-cols-4 gap-1 text-xs">
+          <dl className="mt-3 grid grid-cols-4 gap-1 border-t border-[var(--line)] pt-2.5 text-[11px]">
             <Metric label="Spend" value={fmt.money(ad.spend)} />
             <Metric label="ROAS" value={fmt.ratio(ad.roas)} />
             <Metric label="CTR" value={fmt.pct(ad.ctr)} />
@@ -237,28 +233,9 @@ function AdCard({ ad, tags, thumb, workspaceId, userTags }: {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <dt className="text-neutral-500">{label}</dt>
-      <dd className="font-medium tabular-nums text-neutral-900">{value}</dd>
+    <div className="min-w-0">
+      <dt className="text-[var(--faint)]">{label}</dt>
+      <dd className="truncate font-mono tabular-nums text-[var(--text)]">{value}</dd>
     </div>
-  )
-}
-
-function Select({ label, value, onChange, options }: {
-  label: string
-  value: string
-  onChange: (v: string) => void
-  options: [string, string][]
-}) {
-  return (
-    <label className="flex flex-col gap-1">
-      <span className="text-xs text-neutral-500">{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)}
-        className="rounded-md border border-neutral-300 bg-white px-2 py-1.5 text-sm">
-        {options.map(([v, l]) => (
-          <option key={v} value={v}>{l}</option>
-        ))}
-      </select>
-    </label>
   )
 }

@@ -74,7 +74,7 @@ export function LineChart({ points, format, tickFormat = format, height = 220, l
   }, [points, width, height])
 
   if (points.length === 0) {
-    return <p className="text-sm text-neutral-500">No daily data in this window.</p>
+    return <p className="text-sm text-[var(--muted,#8a8f98)]">No daily data in this window.</p>
   }
 
   const onMove = (e: PointerEvent<SVGRectElement>) => {
@@ -139,13 +139,13 @@ export function LineChart({ points, format, tickFormat = format, height = 220, l
       </svg>
       {hp && hover != null && (
         <div
-          className="pointer-events-none absolute top-1 rounded-md border border-neutral-200 bg-white px-2.5 py-1.5 text-xs shadow-sm"
+          className="pointer-events-none absolute top-1 rounded-lg border border-white/10 bg-[#18181d] px-2.5 py-1.5 text-xs shadow-xl shadow-black/50"
           style={{
             left: Math.min(Math.max(geo.x(hover) - 60, 0), width - 130),
           }}
         >
-          <div className="text-neutral-500">{longDate(hp.date)}</div>
-          <div className="font-semibold tabular-nums text-neutral-900">
+          <div className="text-[#8a8f98]">{longDate(hp.date)}</div>
+          <div className="font-mono font-medium tabular-nums text-[#ededef]">
             {label}: {hp.value == null ? '—' : format(hp.value)}
           </div>
         </div>

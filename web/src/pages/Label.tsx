@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
-import { WorkspaceNav } from '../components/WorkspaceNav'
+import { Tags } from 'lucide-react'
+import { Button, EmptyState, ErrorText, Loading, PageHeader } from '../components/ui'
 import { signedUrls } from '../lib/library'
 import { supabase } from '../lib/supabase'
 import { fetchTaxonomy, type Dimension } from '../lib/taxonomy'
@@ -88,16 +89,19 @@ export function Label() {
     // reset only when the ad changes, not when labels update after a save
   }, [current?.id])
 
-  if (loading && !data) return <main className="mx-auto max-w-6xl p-6 text-sm text-neutral-500">Loading…</main>
-  if (error || !data) return <main className="mx-auto max-w-6xl p-6 text-sm text-red-700">{error ?? 'Not found'}</main>
+  if (loading && !data) return <Loading />
+  if (error || !data) return <ErrorText>{error ?? 'Not found'}</ErrorText>
 
-  const nav = <WorkspaceNav id={id} name={data.workspaceName} />
+  const header = (
+    <PageHeader title="Label ads"
+      description="Label what you see. Mosaic's own tags are hidden here so they can't steer you; accuracy appears on the Evals page after the next eval run." />
+  )
   if (!current) {
     return (
-      <main className="mx-auto max-w-6xl p-6">
-        {nav}
-        <p className="text-sm text-neutral-500">No ads with media to label in this workspace.</p>
-      </main>
+      <>
+        {header}
+        <EmptyState icon={<Tags size={18} />} title="Nothing to label">No ads with media in this workspace.</EmptyState>
+      </>
     )
   }
 
@@ -132,51 +136,52 @@ export function Label() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl p-6">
-      {nav}
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="max-w-2xl text-sm text-neutral-600">
-          Label what you see. Mosaic's own tags are hidden here so they can't steer you; scores appear on the Evals page
-          after the next eval run.
-        </p>
-        <span className="text-sm tabular-nums text-neutral-500">
-          {labeled} of {creatives.length} labeled
-        </span>
+    <>
+      {header}
+      <div className="mb-6 rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4">
+        <div className="flex items-center justify-between gap-3 text-sm">
+          <span className="text-[var(--muted)]">Progress</span>
+          <span className="font-mono tabular-nums"><span className="text-[var(--text)]">{labeled}</span> <span className="text-[var(--faint)]">/ {creatives.length}</span></span>
+        </div>
+        <div className="mt-2 h-1 rounded-full bg-white/[0.06]">
+          <div className="h-1 rounded-full bg-[var(--accent)] transition-all" style={{ width: `${(labeled / creatives.length) * 100}%` }} />
+        </div>
+        <div className="mt-3 flex flex-wrap gap-1.5" aria-label="Ads">
+          {creatives.map((c, i) => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => setIndex(i)}
+              title={c.external_id}
+              aria-label={`Ad ${i + 1}${done(c) ? ', labeled' : ''}`}
+              aria-current={i === index}
+              className={`h-2.5 w-2.5 rounded-full transition ${i === index ? 'ring-2 ring-[var(--accent-2)] ring-offset-2 ring-offset-[var(--panel)]' : ''} ${done(c) ? 'bg-[var(--accent)]' : 'bg-white/15 hover:bg-white/30'}`}
+            />
+          ))}
+        </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-1" aria-label="Ads">
-        {creatives.map((c, i) => (
-          <button
-            key={c.id}
-            onClick={() => setIndex(i)}
-            title={c.external_id}
-            aria-label={`Ad ${i + 1}${done(c) ? ', labeled' : ''}`}
-            aria-current={i === index}
-            className={`h-2.5 w-2.5 rounded-full ${i === index ? 'ring-2 ring-neutral-900 ring-offset-1' : ''} ${done(c) ? 'bg-neutral-900' : 'bg-neutral-300'}`}
-          />
-        ))}
-      </div>
-
-      <div className="mt-6 grid gap-6 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-        <div>
-          <div className="overflow-hidden rounded-lg bg-neutral-100">
+      <div className="grid gap-6 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        <div className="md:sticky md:top-8 md:self-start">
+          <div className="overflow-hidden rounded-xl border border-[var(--line)] bg-black">
             {current.type === 'video' ? (
               <video key={current.id} src={media} poster={poster} controls playsInline className="max-h-[70vh] w-full" />
             ) : (
               <img src={media} alt="" className="max-h-[70vh] w-full object-contain" />
             )}
           </div>
-          <p className="mt-2 text-xs text-neutral-500">
+          <p className="mt-2 font-mono text-xs text-[var(--faint)]">
             Ad {index + 1} · {current.type} · {current.external_id}
           </p>
         </div>
 
-        <div className="space-y-5">
+        <div className="space-y-4">
           {fields.map((d) => (
-            <fieldset key={d.key}>
-              <legend className="text-sm font-medium">{d.label}</legend>
-              {d.description && <p className="text-xs text-neutral-500">{d.description}</p>}
-              <div className="mt-2 flex flex-wrap gap-1.5">
+            <fieldset key={d.key} className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4">
+              <legend className="sr-only">{d.label}</legend>
+              <p className="text-sm font-medium" aria-hidden>{d.label}</p>
+              {d.description && <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">{d.description}</p>}
+              <div className="mt-3 flex flex-wrap gap-1.5">
                 {d.allowedValues!.map((v) => {
                   const on = draft[d.key] === v
                   return (
@@ -185,7 +190,7 @@ export function Label() {
                       type="button"
                       aria-pressed={on}
                       onClick={() => setDraft({ ...draft, [d.key]: v })}
-                      className={`rounded-full border px-3 py-1 text-sm ${on ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-300 text-neutral-700 hover:border-neutral-500'}`}
+                      className={`rounded-full border px-3 py-1 text-sm transition ${on ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--text)]' : 'border-[var(--line-strong)] text-[var(--muted)] hover:border-white/25 hover:text-[var(--text)]'}`}
                     >
                       {v}
                     </button>
@@ -195,32 +200,17 @@ export function Label() {
             </fieldset>
           ))}
 
-          {saveError && <p className="text-sm text-red-700">{saveError}</p>}
-          <div className="flex items-center gap-2 border-t border-neutral-200 pt-4">
-            <button
-              onClick={save}
-              disabled={!complete || saving}
-              className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
-            >
+          <ErrorText>{saveError}</ErrorText>
+          <div className="sticky bottom-0 -mx-1 flex flex-wrap items-center gap-2 bg-[var(--bg)]/90 px-1 py-3 backdrop-blur">
+            <Button variant="primary" onClick={() => void save()} disabled={!complete || saving}>
               {saving ? 'Saving…' : 'Save and next'}
-            </button>
-            <button
-              onClick={() => setIndex(Math.max(0, index - 1))}
-              disabled={index === 0}
-              className="rounded-md px-3 py-2 text-sm text-neutral-600 hover:text-neutral-900 disabled:opacity-40"
-            >
-              Back
-            </button>
-            <button
-              onClick={() => setIndex((index + 1) % creatives.length)}
-              className="rounded-md px-3 py-2 text-sm text-neutral-600 hover:text-neutral-900"
-            >
-              Skip
-            </button>
-            {!complete && <span className="text-xs text-neutral-500">Pick one value per field to save.</span>}
+            </Button>
+            <Button variant="ghost" onClick={() => setIndex(Math.max(0, index - 1))} disabled={index === 0}>Back</Button>
+            <Button variant="ghost" onClick={() => setIndex((index + 1) % creatives.length)}>Skip</Button>
+            {!complete && <span className="text-xs text-[var(--faint)]">Pick one value per field to save.</span>}
           </div>
         </div>
       </div>
-    </main>
+    </>
   )
 }

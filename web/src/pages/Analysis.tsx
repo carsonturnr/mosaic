@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { LineChart } from '../components/LineChart'
-import { WorkspaceNav } from '../components/WorkspaceNav'
+import { BarChart3, Info, Shapes, TrendingDown, TriangleAlert, Zap } from 'lucide-react'
+import { Badge, Card, CardTitle, EmptyState, ErrorText, Loading, PageHeader, SectionTitle, Segmented, Stat, type Tone } from '../components/ui'
 import {
   dimensionReference,
   fetchSnapshot,
@@ -14,7 +15,6 @@ import {
   type WindowKey,
 } from '../lib/analysis'
 import { fmt } from '../lib/format'
-import { supabase } from '../lib/supabase'
 import { useAsync } from '../lib/useAsync'
 import { useWorkspaceMode } from '../lib/workspaceBase'
 
@@ -37,12 +37,7 @@ const DIMENSIONS: { key: string; label: string }[] = [
   { key: 'length_bucket', label: 'Length' },
 ]
 const TREND_METRICS = new Set<Metric>(['roas', 'ctr', 'hook_rate'])
-const VERDICT_STYLE: Record<Verdict, string> = {
-  winner: 'bg-emerald-50 text-emerald-800',
-  loser: 'bg-red-50 text-red-800',
-  neutral: 'text-neutral-400',
-  low_data: 'bg-neutral-100 text-neutral-500',
-}
+const VERDICT_TONE: Record<Exclude<Verdict, 'neutral'>, Tone> = { winner: 'good', loser: 'bad', low_data: 'neutral' }
 const VERDICT_LABEL: Record<Verdict, string> = { winner: 'Winner', loser: 'Below average', neutral: '—', low_data: 'Low data' }
 
 export function Analysis() {
@@ -52,7 +47,6 @@ export function Analysis() {
   const [dim, setDim] = useState('hook_type')
   const [selected, setSelected] = useState<string | null>(null)
 
-  const ws = useAsync(async () => (await supabase.from('workspaces').select('name').eq('id', id).single()).data?.name, [id])
   const snap = useAsync(() => fetchSnapshot(id, win), [id, win])
   const s = snap.data?.payload
   const m = METRICS.find((x) => x.key === metric)!
@@ -66,76 +60,71 @@ export function Analysis() {
   }))
 
   return (
-    <main className="mx-auto max-w-6xl p-6">
-      <WorkspaceNav id={id} name={ws.data ?? undefined} />
+    <>
+      <PageHeader
+        title="Analysis"
+        description="Which hooks, angles and formats win, with confidence. Low-spend ads are pulled toward the average so they can't win by luck."
+        meta={snap.data && `${snap.data.since} to ${snap.data.until} · updated ${new Date(snap.data.computed_at).toLocaleString()}`}
+        actions={
+          <>
+            <Segmented label="Window" value={win} onChange={setWin}
+              options={[['7', '7d'], ['30', '30d'], ['90', '90d'], ['all', 'All']] as const} />
+          </>
+        }
+      />
 
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div className="flex flex-wrap gap-3 text-sm">
-          <Segmented label="Window" value={win} onChange={(v) => setWin(v as WindowKey)}
-            options={[['7', '7d'], ['30', '30d'], ['90', '90d'], ['all', 'All']]} />
-          <Segmented label="Metric" value={metric} onChange={(v) => setMetric(v as Metric)}
-            options={METRICS.map((x): [string, string] => [x.key, x.label])} />
-        </div>
-        {snap.data && (
-          <p className="text-xs text-neutral-500">
-            {snap.data.since} → {snap.data.until} · updated {new Date(snap.data.computed_at).toLocaleString()}
-          </p>
-        )}
-      </div>
-
-      {snap.error && <p className="text-sm text-red-700">{snap.error}</p>}
-      {snap.loading && !snap.data && <p className="text-sm text-neutral-500">Loading…</p>}
+      {snap.error && <ErrorText>{snap.error}</ErrorText>}
+      {snap.loading && !snap.data && <Loading />}
       {!snap.loading && !snap.data && !snap.error && (
-        <div className="rounded-lg border border-dashed border-neutral-300 p-10 text-center text-sm text-neutral-600">
-          No analysis yet. It runs after each sync; use Refresh on the Overview tab.
-        </div>
+        <EmptyState icon={<BarChart3 size={18} />} title="No analysis yet">
+          It runs after each sync. Use Refresh on the Overview page.
+        </EmptyState>
       )}
 
       {s && (
-        <>
+        <div className="space-y-8">
           <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
-            <Kpi label="Spend" value={fmt.money(s.account.spend)} />
+            <Stat label="Spend" value={fmt.money(s.account.spend)} />
             {METRICS.map((x) => (
-              <Kpi key={x.key} label={x.label} value={s.account_kpis[x.key] == null ? '—' : x.format(s.account_kpis[x.key]!)} active={x.key === metric} />
+              <button key={x.key} type="button" onClick={() => setMetric(x.key)} className="text-left" aria-pressed={x.key === metric}>
+                <Stat label={x.label} value={s.account_kpis[x.key] == null ? '—' : x.format(s.account_kpis[x.key]!)} active={x.key === metric} />
+              </button>
             ))}
           </dl>
 
           <Signals snap={s} adsById={adsById} workspaceId={id} />
 
-          {s.concepts && s.concepts.clusters.length > 0 && <ConceptsPanel concepts={s.concepts} />}
-
-          <section className="mt-10">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-base font-semibold">{m.label} by tag</h2>
-              <div className="flex flex-wrap gap-1 text-sm" role="tablist" aria-label="Dimension">
+          <section>
+            <SectionTitle aside={
+              <div className="flex flex-wrap gap-1" role="tablist" aria-label="Dimension">
                 {DIMENSIONS.filter((d) => s.tags[d.key]?.length).map((d) => (
                   <button key={d.key} type="button" role="tab" aria-selected={d.key === dim}
                     onClick={() => { setDim(d.key); setSelected(null) }}
-                    className={`rounded-md px-2.5 py-1 ${d.key === dim ? 'bg-neutral-900 text-white' : 'text-neutral-600 hover:bg-neutral-100'}`}>
+                    className={`rounded-lg px-2.5 py-1 text-xs font-medium transition ${d.key === dim ? 'bg-white/[0.09] text-[var(--text)]' : 'text-[var(--muted)] hover:text-[var(--text)]'}`}>
                     {d.label}
                   </button>
                 ))}
               </div>
-            </div>
+            }>{m.label} by tag</SectionTitle>
             <TagTable rows={rows} metric={metric} format={m.format} reference={ref}
               selected={trendValue ?? null} onSelect={setSelected} />
-            <p className="mt-2 text-xs text-neutral-500">
-              Dots are shrunk estimates with 90% intervals; the dashed line is the average of ads with this tag.
-              Winners clear the line with their whole interval and by at least 10%.
+            <p className="mt-2.5 flex items-start gap-1.5 text-xs text-[var(--faint)]">
+              <Info size={13} className="mt-px shrink-0" />
+              Dots are shrunk estimates with 90% intervals; the dashed line is the average of ads with this tag. Winners clear the line with their whole interval and by at least 10%. Click a row for its weekly trend.
             </p>
           </section>
 
           {TREND_METRICS.has(metric) && trendValue && (
-            <section className="mt-10">
-              <h2 className="mb-2 text-base font-semibold">
-                Weekly {m.label} · <span className="font-normal text-neutral-600">{trendValue}</span>
-              </h2>
+            <Card>
+              <CardTitle aside={trendValue}>Weekly {m.label}</CardTitle>
               <LineChart points={trend} format={m.format} label={m.label} height={200} />
-            </section>
+            </Card>
           )}
-        </>
+
+          {s.concepts && s.concepts.clusters.length > 0 && <ConceptsPanel concepts={s.concepts} />}
+        </div>
       )}
-    </main>
+    </>
   )
 }
 
@@ -161,20 +150,20 @@ function TagTable({ rows, metric, format, reference, selected, onSelect }: {
   const pos = (v: number) => `${((v - min) / (max - min)) * 100}%`
 
   if (sorted.every((r) => r.kpis[metric].value == null)) {
-    return <p className="text-sm text-neutral-500">No ads with this tag report {metric.replace('_', ' ')}.</p>
+    return <p className="text-sm text-[var(--muted)]">No ads with this tag report {metric.replace('_', ' ')}.</p>
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-neutral-200">
+    <div className="overflow-x-auto rounded-xl border border-[var(--line)] bg-[var(--panel)]">
       <table className="w-full min-w-[720px] text-left text-sm">
-        <thead className="bg-neutral-50 text-xs text-neutral-500">
+        <thead className="text-[11px] uppercase tracking-wide text-[var(--faint)]">
           <tr>
-            <th className="px-3 py-2 font-normal">Value</th>
-            <th className="px-3 py-2 text-right font-normal">Ads</th>
-            <th className="px-3 py-2 text-right font-normal">Spend</th>
-            <th className="w-[38%] px-3 py-2 font-normal">Estimate and 90% interval</th>
-            <th className="px-3 py-2 text-right font-normal">Estimate</th>
-            <th className="px-3 py-2 font-normal">Verdict</th>
+            <th className="px-4 py-2.5 font-normal">Value</th>
+            <th className="px-4 py-2.5 text-right font-normal">Ads</th>
+            <th className="px-4 py-2.5 text-right font-normal">Spend</th>
+            <th className="w-[38%] px-4 py-2.5 font-normal">Estimate and 90% interval</th>
+            <th className="px-4 py-2.5 text-right font-normal">Estimate</th>
+            <th className="px-4 py-2.5 font-normal">Verdict</th>
           </tr>
         </thead>
         <tbody>
@@ -184,32 +173,32 @@ function TagTable({ rows, metric, format, reference, selected, onSelect }: {
             const muted = v === 'low_data'
             return (
               <tr key={r.value} onClick={() => onSelect(r.value)}
-                className={`cursor-pointer border-t border-neutral-100 hover:bg-neutral-50 ${selected === r.value ? 'bg-neutral-50' : ''}`}>
-                <td className={`px-3 py-2 font-medium ${muted ? 'text-neutral-500' : ''}`}>{r.value}</td>
-                <td className="px-3 py-2 text-right tabular-nums text-neutral-600">{r.n_ads}</td>
-                <td className="px-3 py-2 text-right tabular-nums text-neutral-600">
-                  {fmt.money(r.totals.spend)} <span className="text-neutral-400">· {fmt.pct(r.spend_share, 0)}</span>
+                className={`cursor-pointer border-t border-[var(--line)] transition hover:bg-[var(--hover)] ${selected === r.value ? 'bg-white/[0.05]' : ''}`}>
+                <td className={`px-4 py-2.5 font-medium ${muted ? 'text-[var(--muted)]' : ''}`}>{r.value}</td>
+                <td className="px-4 py-2.5 text-right font-mono tabular-nums text-[var(--muted)]">{r.n_ads}</td>
+                <td className="px-4 py-2.5 text-right font-mono tabular-nums text-[var(--muted)]">
+                  {fmt.money(r.totals.spend)} <span className="text-[var(--faint)]">· {fmt.pct(r.spend_share, 0)}</span>
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-4 py-2.5">
                   <div className="relative h-5" role="img"
                     aria-label={e.value == null ? 'no data' : `${format(e.value)}, interval ${e.low == null ? '—' : format(e.low)} to ${e.high == null ? '—' : format(e.high)}`}>
-                    <div className="absolute inset-x-0 top-1/2 h-px bg-neutral-100" />
+                    <div className="absolute inset-x-0 top-1/2 h-px bg-white/[0.06]" />
                     {reference != null && (
-                      <div className="absolute inset-y-0 border-l border-dashed border-neutral-400" style={{ left: pos(reference) }} />
+                      <div className="absolute inset-y-0 border-l border-dashed border-white/30" style={{ left: pos(reference) }} />
                     )}
                     {e.low != null && e.high != null && (
-                      <div className={`absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full ${muted ? 'bg-neutral-200' : 'bg-[#2a78d6]/30'}`}
+                      <div className={`absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full ${muted ? 'bg-white/10' : 'bg-[var(--accent)]/35'}`}
                         style={{ left: pos(e.low), width: `calc(${pos(e.high)} - ${pos(e.low)})` }} />
                     )}
                     {e.value != null && (
-                      <div className={`absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white ${muted ? 'bg-neutral-400' : 'bg-[#2a78d6]'}`}
+                      <div className={`absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[var(--panel)] ${muted ? 'bg-white/30' : 'bg-[var(--accent-2)]'}`}
                         style={{ left: pos(e.value) }} />
                     )}
                   </div>
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums">{e.value == null ? '—' : format(e.value)}</td>
-                <td className="px-3 py-2">
-                  <span className={`rounded px-1.5 py-0.5 text-xs ${VERDICT_STYLE[v]}`}>{VERDICT_LABEL[v]}</span>
+                <td className="px-4 py-2.5 text-right font-mono tabular-nums">{e.value == null ? '—' : format(e.value)}</td>
+                <td className="px-4 py-2.5">
+                  {v === 'neutral' ? <span className="text-[var(--faint)]">—</span> : <Badge tone={VERDICT_TONE[v]}>{VERDICT_LABEL[v]}</Badge>}
                 </td>
               </tr>
             )
@@ -233,71 +222,73 @@ function Signals({ snap, adsById, workspaceId }: {
   const outliers = dedupe(snap.outliers.filter((o) => o.metric === 'roas'), (o) => o.ad_id)
   const cards = [
     {
-      title: 'Fading', empty: 'No ads are fading.', items: fatigue.map((f) => ({
+      title: 'Fading', icon: <TrendingDown size={15} />, tone: 'bad' as Tone, empty: 'No ads are fading.', items: fatigue.map((f) => ({
         id: f.ad_id, text: `${f.metric === 'ctr' ? 'CTR' : 'Hook rate'} ${fmt.pct(f.early, 2)} → ${fmt.pct(f.late, 2)} (${fmt.pct(f.change, 0)})`,
       })),
     },
     {
-      title: 'Underfunded winners', empty: 'None right now.', items: under.map((u) => ({
+      title: 'Underfunded winners', icon: <Zap size={15} />, tone: 'good' as Tone, empty: 'None right now.', items: under.map((u) => ({
         id: u.ad_id, text: `${u.metric.toUpperCase()} beats its type by ${fmt.pct((u.low - u.account) / u.account, 0)}+ on ${fmt.pct(u.spend_share, 1)} of spend`,
       })),
     },
     {
-      title: 'ROAS outliers', empty: 'No outliers vs. peers.', items: outliers.map((o) => ({
+      title: 'ROAS outliers', icon: <TriangleAlert size={15} />, tone: 'warn' as Tone, empty: 'No outliers vs. peers.', items: outliers.map((o) => ({
         id: o.ad_id, text: `${o.direction === 'high' ? 'Above' : 'Below'} ${peerLabel(o.peer_group)} (z ${o.z > 0 ? '+' : ''}${o.z.toFixed(1)})`,
       })),
     },
   ]
   return (
-    <section className="mt-8 grid gap-4 md:grid-cols-3">
+    <section className="grid gap-4 md:grid-cols-3">
       {cards.map((c) => (
-        <div key={c.title} className="rounded-lg border border-neutral-200 p-4">
-          <h3 className="text-sm font-semibold">{c.title} <span className="font-normal text-neutral-400">{c.items.length || ''}</span></h3>
+        <Card key={c.title}>
+          <CardTitle icon={c.icon} aside={c.items.length > 0 && <Badge tone={c.tone}>{c.items.length}</Badge>}>{c.title}</CardTitle>
           {c.items.length === 0 ? (
-            <p className="mt-2 text-sm text-neutral-500">{c.empty}</p>
+            <p className="text-sm text-[var(--muted)]">{c.empty}</p>
           ) : (
-            <ul className="mt-2 space-y-2 text-sm">
+            <ul className="space-y-3 text-sm">
               {c.items.slice(0, 5).map((it) => (
                 <li key={it.id}>
-                  <Link to={link(it.id)} className="block truncate font-medium hover:underline">{name(it.id)}</Link>
-                  <p className="text-xs text-neutral-600">{it.text}</p>
+                  <Link to={link(it.id)} className="block truncate font-medium hover:text-[var(--accent-2)]">{name(it.id)}</Link>
+                  <p className="mt-0.5 font-mono text-[11px] text-[var(--muted)]">{it.text}</p>
                 </li>
               ))}
             </ul>
           )}
-        </div>
+        </Card>
       ))}
     </section>
   )
 }
 
 function ConceptsPanel({ concepts }: { concepts: NonNullable<Snapshot['concepts']> }) {
-  const top = concepts.clusters.slice(0, 6)
+  const top = concepts.clusters.slice(0, 8)
   return (
-    <section className="mt-10 grid gap-6 rounded-lg border border-neutral-200 p-5 md:grid-cols-[220px_1fr]">
-      <div>
-        <h2 className="text-base font-semibold">Concept diversity</h2>
-        <p className="mt-3 text-4xl font-semibold tabular-nums">{concepts.diversity.toFixed(1)}</p>
-        <p className="mt-1 text-sm text-neutral-600">
-          effective concepts, by spend, from {concepts.n_creatives} creatives in {concepts.clusters.length} groups.
-        </p>
+    <Card>
+      <div className="grid gap-8 md:grid-cols-[240px_1fr]">
+        <div>
+          <CardTitle icon={<Shapes size={15} />}>Concept diversity</CardTitle>
+          <p className="font-mono text-5xl font-medium tracking-tight text-[var(--accent-2)]">{concepts.diversity.toFixed(1)}</p>
+          <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
+            real concepts by spend, from {concepts.n_creatives} creatives in {concepts.clusters.length} groups. Near-duplicates count once.
+          </p>
+        </div>
+        <ul className="space-y-3 self-center">
+          {top.map((c) => (
+            <li key={c.label + c.creative_ids[0]}>
+              <div className="flex justify-between gap-3 text-sm">
+                <span className="truncate text-[var(--text-2)]">
+                  {c.label} <span className="text-[var(--faint)]">· {c.creative_ids.length} {c.creative_ids.length === 1 ? 'creative' : 'creatives'}</span>
+                </span>
+                <span className="shrink-0 font-mono tabular-nums text-[var(--muted)]">{fmt.pct(c.spend_share, 0)}</span>
+              </div>
+              <div className="mt-1.5 h-1.5 rounded-full bg-white/[0.06]">
+                <div className="h-1.5 rounded-full bg-gradient-to-r from-[var(--v2,#4a3fa0)] to-[var(--accent-2)]" style={{ width: `${Math.max(1, c.spend_share * 100)}%` }} />
+              </div>
+            </li>
+          ))}
+        </ul>
       </div>
-      <ul className="space-y-2.5">
-        {top.map((c) => (
-          <li key={c.label + c.creative_ids[0]}>
-            <div className="flex justify-between gap-3 text-sm">
-              <span className="truncate">
-                {c.label} <span className="text-neutral-400">· {c.creative_ids.length} {c.creative_ids.length === 1 ? 'creative' : 'creatives'}</span>
-              </span>
-              <span className="shrink-0 tabular-nums text-neutral-600">{fmt.pct(c.spend_share, 0)}</span>
-            </div>
-            <div className="mt-1 h-1.5 rounded-full bg-neutral-100">
-              <div className="h-1.5 rounded-full bg-[#2a78d6]" style={{ width: `${Math.max(1, c.spend_share * 100)}%` }} />
-            </div>
-          </li>
-        ))}
-      </ul>
-    </section>
+    </Card>
   )
 }
 
@@ -310,34 +301,4 @@ function peerLabel(group: string): string {
 function dedupe<T>(items: T[], key: (t: T) => string): T[] {
   const seen = new Set<string>()
   return items.filter((i) => (seen.has(key(i)) ? false : (seen.add(key(i)), true)))
-}
-
-function Kpi({ label, value, active }: { label: string; value: string; active?: boolean }) {
-  return (
-    <div className={`rounded-lg border p-3 ${active ? 'border-neutral-900' : 'border-neutral-200'}`}>
-      <dt className="text-xs text-neutral-500">{label}</dt>
-      <dd className="mt-0.5 text-lg font-semibold tabular-nums">{value}</dd>
-    </div>
-  )
-}
-
-function Segmented({ label, value, onChange, options }: {
-  label: string
-  value: string
-  onChange: (v: string) => void
-  options: [string, string][]
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      <span className="text-xs text-neutral-500">{label}</span>
-      <div className="flex gap-0.5 rounded-md bg-neutral-100 p-0.5" role="radiogroup" aria-label={label}>
-        {options.map(([v, l]) => (
-          <button key={v} type="button" role="radio" aria-checked={v === value} onClick={() => onChange(v)}
-            className={`rounded px-2.5 py-1 text-sm ${v === value ? 'bg-white font-medium shadow-sm' : 'text-neutral-600 hover:text-neutral-900'}`}>
-            {l}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
 }

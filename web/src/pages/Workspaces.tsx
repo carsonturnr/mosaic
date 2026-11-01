@@ -1,19 +1,19 @@
+import { ArrowRight, Plus } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { WorkspaceAvatar } from '../components/AppShell'
+import { Badge, Button, Card, ErrorText, Loading, PageHeader } from '../components/ui'
 import { useAuth } from '../lib/useAuth'
 import type { Workspace } from '../lib/types'
 import { supabase } from '../lib/supabase'
 import { useAsync } from '../lib/useAsync'
 
 export function Workspaces() {
-  const { session, signOut } = useAuth()
+  const { session } = useAuth()
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const list = useAsync(async () => {
-    const { data, error: err } = await supabase
-      .from('workspaces')
-      .select('*')
-      .order('created_at', { ascending: true })
+    const { data, error: err } = await supabase.from('workspaces').select('*').order('created_at', { ascending: true })
     if (err) throw new Error(err.message)
     return data as Workspace[]
   }, [])
@@ -22,9 +22,7 @@ export function Workspaces() {
   const create = async (e: FormEvent) => {
     e.preventDefault()
     if (!session) return
-    const { error: err } = await supabase
-      .from('workspaces')
-      .insert({ owner_id: session.user.id, name: name.trim() })
+    const { error: err } = await supabase.from('workspaces').insert({ owner_id: session.user.id, name: name.trim() })
     if (err) {
       setError(err.message)
       return
@@ -34,48 +32,40 @@ export function Workspaces() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl p-6">
-      <header className="mb-8 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Workspaces</h1>
-        <div className="flex items-center gap-4 text-sm">
-          <Link to="/app/evals" className="text-neutral-600 underline">Evals</Link>
-          <button type="button" onClick={() => void signOut()} className="text-neutral-600 underline">
-          Sign out
-        </button>
-        </div>
-      </header>
+    <div className="mx-auto max-w-3xl">
+      <PageHeader title="Workspaces" description="One workspace per brand, each connected to one Meta ad account." />
 
-      {workspaces.length === 0 ? (
-        <p className="mb-6 text-sm text-neutral-600">
-          No workspaces yet. Create one, then connect a Meta ad account.
-        </p>
-      ) : (
-        <ul className="mb-6 divide-y divide-neutral-200 rounded border border-neutral-200">
+      {list.loading && !list.data && <Loading />}
+      {list.data && workspaces.length > 0 && (
+        <ul className="grid gap-3 sm:grid-cols-2">
           {workspaces.map((w) => (
-            <li key={w.id} className="flex items-center justify-between px-4 py-3">
-              <Link to={`/app/w/${w.id}`} className="underline">
-                {w.name}
+            <li key={w.id}>
+              <Link to={`/app/w/${w.id}`}
+                className="group flex items-center gap-3 rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 transition hover:border-[var(--line-strong)] hover:bg-[var(--panel-2)]">
+                <WorkspaceAvatar name={w.name} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium">{w.name}</span>
+                  <span className="block text-xs text-[var(--faint)]">Created {new Date(w.created_at).toLocaleDateString()}</span>
+                </span>
+                {w.is_demo && <Badge tone="accent">Demo</Badge>}
+                <ArrowRight size={15} className="text-[var(--faint)] transition group-hover:translate-x-0.5 group-hover:text-[var(--text)]" />
               </Link>
-              {w.is_demo && <span className="text-xs text-neutral-500">demo</span>}
             </li>
           ))}
         </ul>
       )}
 
-      <form onSubmit={create} className="flex gap-2">
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Workspace name"
-          required
-          className="flex-1 rounded border border-neutral-300 px-3 py-2"
-        />
-        <button type="submit" className="rounded bg-neutral-900 px-3 py-2 text-white">
-          Create
-        </button>
-      </form>
+      <Card className="mt-6">
+        <form onSubmit={create} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <label className="flex flex-1 flex-col gap-1.5">
+            <span className="text-xs font-medium text-[var(--muted)]">{workspaces.length ? 'New workspace' : 'Create your first workspace'}</span>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Brand name" required className="h-9 px-3 text-sm" />
+          </label>
+          <Button type="submit" variant="primary"><Plus size={15} /> Create</Button>
+        </form>
+      </Card>
 
-      {(error ?? list.error) && <p className="mt-4 text-sm text-red-700">{error ?? list.error}</p>}
-    </main>
+      <div className="mt-4"><ErrorText>{error ?? list.error}</ErrorText></div>
+    </div>
   )
 }

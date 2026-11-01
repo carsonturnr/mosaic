@@ -3,7 +3,7 @@ import { useAuth } from '../lib/useAuth'
 
 export function RequireAuth() {
   const { session, loading } = useAuth()
-  if (loading) return <p className="p-8 text-sm text-neutral-500">Loading…</p>
+  if (loading) return <div className="app flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">Loading…</div>
   if (!session) return <Navigate to="/sign-in" replace />
   return <Outlet />
 }
