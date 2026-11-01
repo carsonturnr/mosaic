@@ -9,16 +9,52 @@ Built as a solo applied-AI project. The target is a deployed, demo-ready MVP by 
 [![CI](https://github.com/carsonturnr/mosaic/actions/workflows/ci.yml/badge.svg)](https://github.com/carsonturnr/mosaic/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
+![Overview of the demo workspace](docs/images/overview.jpg)
+
 ## How it works
 
-One pipeline: **sync → perceive → analyze → explain.**
+One pipeline: **sync → perceive → analyze → explain.** Each stage writes structured rows to Postgres, and later stages never re-read raw media.
 
-1. **Sync.** Campaigns, ad sets, ads, creatives and daily KPIs are pulled from the Meta Marketing API on a schedule, through a `DataSource` interface that also runs on sandbox plus synthetic data and on a local demo fixture.
-2. **Perceive.** Each video is split into scenes; every scene gets a transcript, on-screen text and a visual description. The first three seconds are tagged as the hook. Whole ads get angle, persona, format, offer, proof type and CTA, all as schema-validated JSON with confidence scores.
-3. **Analyze.** Tag values are ranked by KPI with empirical-Bayes shrinkage so low-spend ads can't win by noise. Outliers, trends, static-vs-video, and concept clusters with a diversity score.
-4. **Explain.** A strategist agent and a brief generator call typed tools over the analytics layer. A grounding validator checks every cited number against the database before a report is saved.
+```mermaid
+flowchart LR
+  meta[Meta Marketing API] --> sync
+  subgraph worker [Python worker on Modal]
+    sync[Sync<br/>ads, creatives, daily KPIs] --> perceive[Perceive<br/>scenes, transcripts, tags,<br/>script + image embeddings]
+    perceive --> analyze[Analyze<br/>shrunk rankings, outliers,<br/>fatigue, concept clusters]
+    analyze --> explain[Explain<br/>strategist + brief agents]
+    explain --> ground{Grounding<br/>validator}
+  end
+  ground -->|every number matches| db[(Supabase Postgres)]
+  ground -.->|mismatch: retry once| explain
+  db --> web[React app]
+```
 
-Evals run in CI: tagging accuracy against a labeled set, grounding, planted-problem detection on synthetic data, and brief quality.
+1. **Sync.** Campaigns, ad sets, ads, creatives and daily KPIs come from the Meta Marketing API on a schedule (every 4 hours, plus a nightly 28-day restatement). Everything goes through one `DataSource` interface, which also runs on a Meta sandbox account with synthetic results and on a local demo fixture.
+2. **Perceive.** Each video is split into scenes with a forced boundary at 3 seconds, so the hook is always its own segment. Gemini watches the whole video and returns schema-validated tags with confidence: hook type, angle, persona, format, offer, proof type and CTA. Scripts and keyframes are embedded for similarity.
+3. **Analyze.** Tag values are ranked by KPI with empirical-Bayes shrinkage, so a low-spend ad can't win by luck. The analysis also covers static vs. video, weekly trends, robust-z outliers within peer groups, fading ads, and underfunded winners. Near-duplicate ads are clustered into concepts, and the spend-weighted diversity score says how many real ideas the account is running.
+4. **Explain.** A strategist agent and a brief generator (Claude) call typed, read-only tools over the analytics layer. Every claim has to cite ad IDs and metric values. A grounding validator checks each cited number against the database before anything is saved.
+
+| Library | Analysis | Report |
+| --- | --- | --- |
+| ![Creative library](docs/images/library.jpg) | ![Tag rankings with intervals](docs/images/analysis.jpg) | ![Strategist report with checked citations](docs/images/report.jpg) |
+
+## Results
+
+The latest nightly eval run (also shown on the in-app Evals page):
+
+| Eval | How it's measured | Result |
+| --- | --- | --- |
+| Planted problems | The synthetic generator plants a winning hook, fading ads, near-duplicates, a static-vs-video gap and a hidden low-spend winner. The analysis must surface each one. Gated in CI. | 100% on 8 seeded accounts |
+| Grounding | Every number cited in a strategist report or brief is checked against the database. | 100% (131 numbers across 4 reports) |
+| Tagging accuracy | AI tags vs. blind hand labels on real public ads, per field. | Early: mean F1 0.59 on 10 labeled ads. Format and offer are at 90% accuracy; hook type and angle are the hard ones. The labeled set is growing. |
+
+## Design decisions
+
+- **Synthetic data with an answer key.** Meta sandbox accounts never deliver, so they have no results. Rather than fake a dashboard, a deterministic generator layers realistic daily KPIs onto the ads' own tags and records the patterns it plants. Those patterns double as the eval answer key.
+- **Shrinkage before ranking.** Rates use a beta-binomial prior, and CPA and ROAS use gamma-Poisson estimates. Priors are capped at the weight of one typical ad. A tag only counts as a "winner" if its whole 90% interval clears the average by at least 10%.
+- **Citations as data.** Agents submit claims as `{claim, ad_ids, metrics: [{entity, metric, value, window}]}`, so every number points at a specific row and can be checked mechanically.
+- **One LLM wrapper.** Every model call goes through one wrapper, which handles schema validation with one retry, backoff, a content-hash cache (unchanged creatives are never re-tagged) and Langfuse tracing.
+- **Concepts, not ads.** Similar ads are grouped on key tags plus script and image embeddings, so 22 variations of one idea count as one concept.
 
 ## Stack
 
@@ -27,7 +63,7 @@ Evals run in CI: tagging accuracy against a labeled set, grounding, planted-prob
 | Web | React 19, Vite, TypeScript (strict), Tailwind v4, Vercel |
 | Data | Supabase (Postgres + pgvector, Auth, Storage, Vault) |
 | Workers | Python 3.12, FastAPI, Modal (cron + queues) |
-| Perception | Gemini Flash (video + image), ffmpeg + PySceneDetect |
+| Perception | Gemini Flash (video + image), Gemini embeddings (text + image), ffmpeg + PySceneDetect |
 | Agents | Claude with tool use and structured outputs |
 | Tracing and evals | Langfuse |
 
@@ -38,7 +74,7 @@ web/        React app: marketing site, auth, creative library, dashboards
 worker/     Python package `mosaic`: data sources, sync, perception, analytics, agents
 supabase/   migrations and seed SQL
 evals/      labeled sets, eval runners, planted-pattern answer key
-docs/       MVP spec
+docs/       MVP spec, architecture, screenshots
 scripts/    seeding and one-off tools
 ```
 
