@@ -264,15 +264,15 @@ function ConceptsPanel({ concepts }: { concepts: NonNullable<Snapshot['concepts'
   const top = concepts.clusters.slice(0, 8)
   return (
     <Card>
-      <div className="grid gap-8 md:grid-cols-[240px_1fr]">
-        <div>
+      <div className="grid gap-8 md:grid-cols-[240px_minmax(0,1fr)]">
+        <div className="min-w-0">
           <CardTitle icon={<Shapes size={15} />}>Concept diversity</CardTitle>
           <p className="font-mono text-5xl font-medium tracking-tight text-[var(--accent-2)]">{concepts.diversity.toFixed(1)}</p>
           <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
             real concepts by spend, from {concepts.n_creatives} creatives in {concepts.clusters.length} groups. Near-duplicates count once.
           </p>
         </div>
-        <ul className="space-y-3 self-center">
+        <ul className="min-w-0 space-y-3 self-center">
           {top.map((c) => (
             <li key={c.label + c.creative_ids[0]}>
               <div className="flex justify-between gap-3 text-sm">

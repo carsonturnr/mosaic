@@ -290,7 +290,7 @@ function WinnerSpotlight({ root, ad, perf, thumbs, s, readOnly }: {
       <div className="relative flex flex-col gap-5 p-5 sm:flex-row">
         <Link to={`${root}/ads/${ad.ad_id}`} className="shrink-0">
           <span className="relative block">
-            <AdThumb src={perf?.thumbnail_path ? thumbs[perf.thumbnail_path] : undefined} video={video} className="aspect-[4/5] w-full rounded-xl sm:w-44" />
+            <AdThumb src={perf?.thumbnail_path ? thumbs[perf.thumbnail_path] : undefined} video={video} className="aspect-[4/5] w-36 rounded-xl sm:w-44" />
             <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--good)] backdrop-blur">
               <Trophy size={11} /> Winner
             </span>
