@@ -21,7 +21,7 @@ import { useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { AdThumb } from '../components/AdThumb'
 import { buttonClass } from '../components/buttonClass'
-import { Badge, Button, Card, CardTitle, ErrorText, Loading, PageHeader, Stat, Table } from '../components/ui'
+import { Badge, Button, Callout, Card, CardTitle, ErrorText, Loading, PageHeader, Stat, Table } from '../components/ui'
 import { fetchSnapshot, type AdStats, type Metric, type Snapshot, type SnapshotRow } from '../lib/analysis'
 import { workerApi, type MetaAdAccount } from '../lib/api'
 import { fmt } from '../lib/format'
@@ -90,6 +90,15 @@ async function loadOverview(id: string): Promise<Overview> {
     report: (report.data?.[0] ?? null) as unknown as ReportBrief | null,
     hasGuidelines: !!memory.data?.guidelines?.trim(),
   }
+}
+
+/** A live Meta source whose latest sync failed on auth: the token expired or was revoked. */
+function expiredMeta(sources: DataSource[], runs: SyncRun[]): boolean {
+  return sources.some((d) => {
+    if (d.kind !== 'meta_live') return false
+    const last = runs.find((r) => r.data_source_id === d.id) // runs are newest first
+    return last?.status === 'failed' && /Meta API error (190|102)\//.test(last.error ?? '')
+  })
 }
 
 const topBySpend = (perf: AdPerf[], n: number) => [...perf].sort((a, b) => b.spend - a.spend).slice(0, n)
@@ -177,6 +186,17 @@ export function Workspace() {
 
       <div className="space-y-8">
         <ErrorText>{error ?? overview.error}</ErrorText>
+
+        {!readOnly && expiredMeta(o.sources, o.runs) && adAccounts.length === 0 && (
+          <Callout tone="warn" icon={<TriangleAlert size={15} />}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span>Your Meta connection expired, so syncing has stopped. Reconnect to pick up where it left off.</span>
+              <Button size="sm" variant="primary" onClick={() => void startConnect()} disabled={busy !== null}>
+                <Link2 size={13} /> {busy === 'connect' ? 'Connecting…' : 'Reconnect Meta'}
+              </Button>
+            </div>
+          </Callout>
+        )}
 
         {adAccounts.length > 0 && (
           <Card>
