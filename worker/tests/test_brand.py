@@ -113,3 +113,28 @@ def test_unreachable_site_is_a_clear_error() -> None:
     respx.get("https://driftwell.com/").mock(side_effect=httpx.ConnectTimeout("slow"))
     with pytest.raises(brand.BrandURLError, match="couldn't reach"):
         brand.fetch_site_text("https://driftwell.com/")
+
+
+@respx.mock
+def test_blocked_sites_suggest_pasting_and_pasted_text_works(monkeypatch: Any) -> None:
+    respx.get("https://driftwell.com/").mock(return_value=httpx.Response(429))
+    with pytest.raises(brand.BrandURLError, match="paste its text"):
+        brand.fetch_site_text("https://driftwell.com/")
+
+    monkeypatch.setenv("WORKER_API_KEY", "k1")
+    store = MemoryStore()
+    store.insert("workspaces", {"id": "ws", "owner_id": "u1", "name": "W"})
+    fake = Fake()
+    api.deps.store_factory = lambda: store
+    api.deps.verify_jwt = lambda tok: {"user-jwt": "u1"}.get(tok)
+    api.deps.llm_factory = lambda _s: LLM(fake)
+    c = TestClient(api.app)
+    h = {"Authorization": "Bearer user-jwt"}
+    r = c.post(
+        "/workspaces/ws/brand/learn",
+        json={"text": "Driftwell makes zero-sugar electrolytes."},
+        headers=h,
+    )
+    assert r.status_code == 200 and "Pasted" not in fake.prompts[0]
+    assert "zero-sugar electrolytes" in fake.prompts[0]
+    assert c.post("/workspaces/ws/brand/learn", json={"text": "hi"}, headers=h).status_code == 400

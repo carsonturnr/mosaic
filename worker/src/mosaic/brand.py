@@ -61,8 +61,17 @@ SYSTEM = (
 def learn_brand(
     llm: LLM, url: str, workspace_id: str, http: httpx.Client | None = None
 ) -> BrandProfile:
-    text = fetch_site_text(url, http)
-    req = LLMRequest(model=MODEL, system=SYSTEM, prompt=f"Website: {url}\n\n{text}")
+    return learn_brand_from_text(llm, fetch_site_text(url, http), workspace_id, source=url)
+
+
+def learn_brand_from_text(
+    llm: LLM, text: str, workspace_id: str, source: str = "pasted by the owner"
+) -> BrandProfile:
+    """For sites that turn away automated readers: the owner pastes their own copy."""
+    text = text.strip()[:MAX_CHARS]
+    if len(text) < 40:
+        raise BrandURLError("paste a few sentences about the brand")
+    req = LLMRequest(model=MODEL, system=SYSTEM, prompt=f"Source: {source}\n\n{text}")
     return llm.structured("brand_profile", req, BrandProfile, workspace_id=workspace_id)
 
 
@@ -78,6 +87,8 @@ def fetch_site_text(url: str, http: httpx.Client | None = None) -> str:
         if resp.is_redirect and "location" in resp.headers:
             url = urljoin(url, resp.headers["location"])
             continue
+        if resp.status_code in (401, 403, 429, 503):
+            raise BrandURLError("that site doesn't allow automated reading; paste its text instead")
         if resp.status_code >= 400:
             raise BrandURLError(f"the site answered {resp.status_code}")
         if "html" not in resp.headers.get("content-type", "html"):

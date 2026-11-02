@@ -51,8 +51,8 @@ export const workerApi = {
       `/workspaces/${workspaceId}/meta/connect`,
       { user_access_token: userAccessToken, ad_account_id: adAccountId },
     ),
-  learnBrand: (workspaceId: string, url: string) =>
-    call<{ guidelines: string; profile: Record<string, unknown> }>(`/workspaces/${workspaceId}/brand/learn`, { url }),
+  learnBrand: (workspaceId: string, source: { url: string } | { text: string }) =>
+    call<{ guidelines: string; profile: Record<string, unknown> }>(`/workspaces/${workspaceId}/brand/learn`, source),
   metaDisconnect: (workspaceId: string) =>
     call<{ disconnected: number }>(`/workspaces/${workspaceId}/meta`, undefined, 'DELETE'),
   deleteWorkspace: (workspaceId: string) =>

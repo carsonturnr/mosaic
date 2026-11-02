@@ -252,21 +252,26 @@ def meta_connect(
 
 
 class BrandLearnRequest(BaseModel):
-    url: str
+    url: str | None = None
+    text: str | None = None  # pasted copy, for sites that block automated reading
 
 
 @app.post("/workspaces/{workspace_id}/brand/learn")
 def brand_learn(workspace_id: str, body: BrandLearnRequest, principal: Auth) -> dict[str, Any]:
     """Draft brand guidelines from the brand's website. The owner reviews and saves them."""
-    from mosaic.brand import BrandURLError, learn_brand
+    from mosaic.brand import BrandURLError, learn_brand, learn_brand_from_text
 
     store, settings = deps.store_factory(), deps.settings_factory()
     require_workspace(store, principal, workspace_id)
-    url = body.url.strip()
+    url = (body.url or "").strip()
     if url and "://" not in url:
         url = f"https://{url}"
     try:
-        profile = learn_brand(deps.llm_factory(settings), url, workspace_id)
+        llm = deps.llm_factory(settings)
+        if body.text:
+            profile = learn_brand_from_text(llm, body.text, workspace_id)
+        else:
+            profile = learn_brand(llm, url, workspace_id)
     except BrandURLError as exc:
         raise HTTPException(400, str(exc)) from exc
     except Exception as exc:  # model errors: answer cleanly so the browser can show it
