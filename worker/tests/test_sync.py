@@ -95,7 +95,15 @@ def test_seed_demo_is_public_dated_and_has_cards() -> None:
     res = seed_demo(store, storage, "owner")
     ws = store.select("workspaces", id=res["workspace_id"])[0]
     assert ws["is_demo"] is True and ws["name"].startswith("Driftwell")
-    assert res["cards"] == 24 and len(storage.files) == 24
+    assert res["cards"] == 24
+    videos = [c for c in store.tables["creatives"] if c["type"] == "video"]
+    scenes = store.tables["scenes"]
+    assert res["scenes"] == len(scenes) and len(storage.files) == 24 + len(scenes)
+    for v in videos:  # every demo video gets a breakdown with the hook as its own 0-3 s scene
+        mine = sorted((s for s in scenes if s["creative_id"] == v["id"]), key=lambda s: s["idx"])
+        assert mine[0]["start_s"] == 0.0 and mine[0]["end_s"] == 3.0
+        assert mine[-1]["end_s"] == round(float(v["duration_s"]), 1)
+        assert all(s["keyframe_path"] in storage.files and s["transcript"] for s in mine)
     statics = [c for c in store.tables["creatives"] if c["type"] != "video"]
     assert statics and all(c["storage_path"] and c["thumbnail_path"] for c in statics)
     assert all(
@@ -109,3 +117,4 @@ def test_seed_demo_is_public_dated_and_has_cards() -> None:
     assert snap and snap.fatigue and snap.underfunded  # planted patterns survive the rebrand
     again = seed_demo(store, storage, "owner")
     assert again["workspace_id"] == res["workspace_id"] and len(store.tables["workspaces"]) == 1
+    assert len(store.tables["scenes"]) == len(scenes)  # re-seeding replaces, not duplicates

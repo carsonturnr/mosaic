@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import io
 import textwrap
+from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
@@ -93,6 +94,82 @@ def render_card(headline: str, line: str, shade: str, size: tuple[int, int]) -> 
     return buf.getvalue()
 
 
+# What each format looks like on screen, so a demo video's scenes read like a real edit.
+FORMAT_SHOTS = {
+    "UGC": (
+        "Creator talks to a handheld phone in her kitchen",
+        "Pours a stick into a water bottle and shakes it",
+    ),
+    "talking head": (
+        "Presenter speaks straight to camera, plain backdrop",
+        "Cut to a close-up as she makes the point",
+    ),
+    "product demo": (
+        "Stick pack tears open over a glass of water",
+        "Powder dissolves; the drink turns clear pink",
+    ),
+    "montage/B-roll": (
+        "Quick cuts: desk at 3 p.m., a run, a commute",
+        "Bottle in a gym bag, then on a desk",
+    ),
+    "founder story": (
+        "Founder in the test kitchen, sleeves rolled up",
+        "Early prototype jars on a shelf",
+    ),
+    "text-on-screen": (
+        "Bold captions over a slow pan of the product",
+        "Caption cards over the drink being poured",
+    ),
+}
+BROLL = {"UGC": "lifestyle", "montage/B-roll": "lifestyle", "product demo": "product close-up"}
+PROOF_LINES = {
+    "reviews/stars": "4.8 stars from 12,000 reviews.",
+    "testimonial": "“Two weeks in and my afternoons are different.”",
+    "before/after": "Before: two coffees by 3 p.m. After: none.",
+    "expert": "Formulated with a sports dietitian.",
+    "data/stat": "3 electrolytes, 0 g sugar, 10 calories.",
+    "press": "As featured in Runner's World.",
+}
+
+
+@dataclass(frozen=True)
+class DemoScene:
+    start_s: float
+    end_s: float
+    transcript: str
+    on_screen_text: str
+    visual_description: str
+    broll_type: str | None
+
+
+def script_scenes(tags: dict[str, str], duration_s: float) -> list[DemoScene]:
+    """A scene-by-scene breakdown for a demo video, written from its tags.
+
+    The hook is always 0-3 s, like the real pipeline's forced boundary; the rest of
+    the runtime is split between the body, proof, offer and call to action.
+    """
+    fmt = tags.get("format", "")
+    first, second = FORMAT_SHOTS.get(fmt, FORMAT_SHOTS["text-on-screen"])
+    broll = BROLL.get(fmt)
+    hook = HOOK_LINES.get(tags.get("hook_type", ""), "Hydration that keeps up with you.")
+    body = ANGLE_LINES.get(tags.get("angle", ""), "")
+    beats = [(body, body.split(",")[0].split(".")[0], second)]
+    if proof := PROOF_LINES.get(tags.get("proof_type", "")):
+        beats.append((proof, proof, "Review cards stack up on screen"))
+    if offer := OFFER_LINES.get(tags.get("offer", "")):
+        beats.append((offer, offer.rstrip("."), "Product shot with the offer in a banner"))
+    beats.append(
+        (f"Try {BRAND} today.", f"{BRAND} · link below", "End card: logo and the stick pack")
+    )
+    scenes = [DemoScene(0.0, 3.0, hook, hook, first, None)]
+    step = max(duration_s - 3.0, 1.0) / len(beats)
+    for i, (said, shown, visual) in enumerate(beats):
+        start = 3.0 + i * step
+        end = duration_s if i == len(beats) - 1 else start + step
+        scenes.append(DemoScene(round(start, 1), round(end, 1), said, shown, visual, broll))
+    return scenes
+
+
 class DemoSource(SandboxSyntheticSource):
     def __init__(
         self,
@@ -146,6 +223,10 @@ class DemoSource(SandboxSyntheticSource):
 
     def ground_truth_tags(self) -> dict[str, dict[str, str]]:
         return {k.replace("syn_", "dw_"): v for k, v in super().ground_truth_tags().items()}
+
+    def scenes(self, creative: Creative) -> list[DemoScene]:
+        tags = self._tags[creative.external_id.replace("dw_", "syn_")]
+        return script_scenes(tags, float(creative.duration_s or 30.0))
 
     def card(self, creative: Creative) -> MediaFile:
         """A branded card standing in for the creative: the static itself, or a video poster."""

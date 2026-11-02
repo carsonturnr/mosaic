@@ -181,6 +181,7 @@ def seed_demo(
                 values["storage_path"] = path  # the card is the static ad itself
             store.update("creatives", values, id=c["id"])
             cards += 1
+        n_scenes = write_demo_scenes(store, storage, source, ws_id, Path(tmp))
     store.upsert(
         "brand_memory",
         [{"workspace_id": ws_id, "guidelines": DEMO_GUIDELINES, "learnings": ""}],
@@ -199,8 +200,48 @@ def seed_demo(
         "metrics": metrics["stats"],
         "tags": n_tags,
         "cards": cards,
+        "scenes": n_scenes,
         "analysis": analysis["stats"],
     }
+
+
+def write_demo_scenes(store: Store, storage: Any, source: Any, ws_id: str, tmp: Any) -> int:
+    """Scene breakdowns for the demo's videos, written from their tags, with a keyframe card
+    per scene. The demo has no real footage to watch, so this stands in for perception."""
+    import hashlib
+
+    from mosaic.datasources.demo import SHADES, render_card
+
+    n = 0
+    for c in store.select("creatives", "id,external_id,type", workspace_id=ws_id):
+        if c["type"] != "video":
+            continue
+        creative = source.get_creative(c["external_id"])
+        store.delete("scenes", creative_id=c["id"])
+        for idx, sc in enumerate(source.scenes(creative)):
+            digest = hashlib.sha256(f"{c['external_id']}:{idx}".encode()).hexdigest()
+            shade = SHADES[int(digest, 16) % len(SHADES)]
+            frame = tmp / f"{c['external_id']}_scene_{idx}.png"
+            label = "Hook · 0-3 s" if idx == 0 else f"Scene {idx + 1}"
+            frame.write_bytes(render_card(label, sc.on_screen_text, shade, (540, 960)))
+            path = f"{ws_id}/{c['id']}/scene_{idx}.png"
+            storage.upload(path, frame, "image/png")
+            store.insert(
+                "scenes",
+                {
+                    "creative_id": c["id"],
+                    "idx": idx,
+                    "start_s": sc.start_s,
+                    "end_s": sc.end_s,
+                    "keyframe_path": path,
+                    "transcript": sc.transcript,
+                    "on_screen_text": sc.on_screen_text,
+                    "visual_description": sc.visual_description,
+                    "broll_type": sc.broll_type,
+                },
+            )
+            n += 1
+    return n
 
 
 def seed_local(
