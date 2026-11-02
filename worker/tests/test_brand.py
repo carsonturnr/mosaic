@@ -138,3 +138,45 @@ def test_blocked_sites_suggest_pasting_and_pasted_text_works(monkeypatch: Any) -
     assert r.status_code == 200 and "Pasted" not in fake.prompts[0]
     assert "zero-sugar electrolytes" in fake.prompts[0]
     assert c.post("/workspaces/ws/brand/learn", json={"text": "hi"}, headers=h).status_code == 400
+
+
+def _resp(stop: str, *blocks: Any) -> Any:
+    from types import SimpleNamespace as NS
+
+    return NS(stop_reason=stop, content=list(blocks))
+
+
+def test_research_resumes_paused_turns_and_lists_sources() -> None:
+    from types import SimpleNamespace as NS
+
+    search = NS(type="web_search_tool_result", content=[NS(url="https://driftwell.com/about")])
+    turns = [
+        _resp("pause_turn", NS(type="text", text="Driftwell sells "), search),
+        _resp("end_turn", NS(type="text", text="zero-sugar electrolytes.")),
+    ]
+    calls: list[dict[str, Any]] = []
+
+    def create(**kw: Any) -> Any:
+        calls.append({**kw, "messages": list(kw["messages"])})
+        return turns[len(calls) - 1]
+
+    notes = brand.research_brand(create, "driftwell.com")
+    assert notes.startswith("Driftwell sells zero-sugar electrolytes.")
+    assert "Sources:\nhttps://driftwell.com/about" in notes
+    assert len(calls) == 2 and calls[1]["messages"][-1]["role"] == "assistant"
+    assert {t["type"] for t in calls[0]["tools"]} == {"web_search_20260209", "web_fetch_20260209"}
+
+
+@respx.mock
+def test_blocked_site_falls_back_to_research() -> None:
+    respx.get("https://driftwell.com/").mock(return_value=httpx.Response(403))
+    fake = Fake()
+    profile = brand.learn_brand(
+        LLM(fake),
+        "https://driftwell.com/",
+        "ws",
+        research=lambda d: f"Notes about {d}: electrolytes.",
+    )
+    assert profile.product == PROFILE["product"]
+    assert "Notes about driftwell.com" in fake.prompts[0]
+    assert "web research on https://driftwell.com/" in fake.prompts[0]

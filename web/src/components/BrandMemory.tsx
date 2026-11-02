@@ -61,7 +61,7 @@ export function BrandMemory({ workspaceId }: { workspaceId: string }) {
               <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="yourbrand.com" required className="h-9 w-full pl-8 pr-3 text-sm" />
             </label>
             <Button type="submit" variant="accent" disabled={learning === 'busy' || !url.trim()}>
-              {learning === 'busy' ? 'Reading the site…' : 'Draft guidelines'}
+              {learning === 'busy' ? 'Researching… up to a minute' : 'Draft guidelines'}
             </Button>
           </div>
         ) : (

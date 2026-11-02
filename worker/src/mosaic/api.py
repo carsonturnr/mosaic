@@ -271,7 +271,14 @@ def brand_learn(workspace_id: str, body: BrandLearnRequest, principal: Auth) -> 
         if body.text:
             profile = learn_brand_from_text(llm, body.text, workspace_id)
         else:
-            profile = learn_brand(llm, url, workspace_id)
+            research = None
+            if settings.anthropic_api_key:
+                from mosaic.agents.run import anthropic_create
+                from mosaic.brand import research_brand
+
+                create = anthropic_create(settings.anthropic_api_key)
+                research = lambda domain: research_brand(create, domain)  # noqa: E731
+            profile = learn_brand(llm, url, workspace_id, research=research)
     except BrandURLError as exc:
         raise HTTPException(400, str(exc)) from exc
     except Exception as exc:  # model errors: answer cleanly so the browser can show it
