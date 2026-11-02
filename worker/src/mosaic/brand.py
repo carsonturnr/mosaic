@@ -71,7 +71,10 @@ def fetch_site_text(url: str, http: httpx.Client | None = None) -> str:
     client = http or httpx.Client(timeout=15, headers={"User-Agent": "Mosaic/1.0 (+brand profile)"})
     for _ in range(MAX_REDIRECTS + 1):
         _check_public(url)
-        resp = client.get(url, follow_redirects=False)
+        try:
+            resp = client.get(url, follow_redirects=False)
+        except httpx.HTTPError as exc:
+            raise BrandURLError("couldn't reach that site; check the link and try again") from exc
         if resp.is_redirect and "location" in resp.headers:
             url = urljoin(url, resp.headers["location"])
             continue

@@ -106,3 +106,10 @@ def test_endpoint_returns_a_draft_and_writes_nothing(monkeypatch: Any) -> None:
         headers={"Authorization": "Bearer user-jwt"},
     )
     assert bad.status_code == 400
+
+
+@respx.mock
+def test_unreachable_site_is_a_clear_error() -> None:
+    respx.get("https://driftwell.com/").mock(side_effect=httpx.ConnectTimeout("slow"))
+    with pytest.raises(brand.BrandURLError, match="couldn't reach"):
+        brand.fetch_site_text("https://driftwell.com/")

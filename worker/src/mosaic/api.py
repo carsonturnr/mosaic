@@ -269,6 +269,8 @@ def brand_learn(workspace_id: str, body: BrandLearnRequest, principal: Auth) -> 
         profile = learn_brand(deps.llm_factory(settings), url, workspace_id)
     except BrandURLError as exc:
         raise HTTPException(400, str(exc)) from exc
+    except Exception as exc:  # model errors: answer cleanly so the browser can show it
+        raise HTTPException(502, "couldn't read the brand right now; try again") from exc
     return {"profile": profile.model_dump(), "guidelines": profile.guidelines()}
 
 
