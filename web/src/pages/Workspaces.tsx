@@ -32,6 +32,7 @@ interface Summary {
   creatives: number
   processing: number
   account: Totals | null
+  window: '30' | 'all' | null
   kpis: Record<Metric, number | null> | null
   concepts: number | null
   reportAt: string | null
@@ -94,6 +95,7 @@ async function loadSummaries(): Promise<Summary[]> {
       creatives: creatives.length,
       processing: creatives.filter((c) => c.perception_status === 'pending' || c.perception_status === 'processing').length,
       account: snap?.account ?? null,
+      window: snap ? (snap.window_key === '30' ? '30' : 'all') : null,
       kpis: snap?.kpis ?? null,
       concepts: snap?.concepts?.length ?? null,
       reportAt: mine(reports.data)[0]?.created_at ?? null,
@@ -159,6 +161,7 @@ export function Workspaces() {
       <PageHeader
         title={firstName ? `Welcome back, ${firstName}` : 'Your brands'}
         description="One workspace per brand, each connected to one Meta ad account."
+        meta={`${summaries.length} ${summaries.length === 1 ? 'workspace' : 'workspaces'} · ${fmt.int(summaries.reduce((t, s) => t + s.ads, 0))} ads tracked${todo.length ? ` · ${todo.length} need${todo.length === 1 ? 's' : ''} attention` : ''}`}
         actions={
           <>
             <Link to="/demo" className={buttonClass('ghost')}><Play size={14} /> Live demo</Link>
@@ -241,7 +244,7 @@ function WorkspaceCard({ s }: { s: Summary }) {
 
       {s.account ? (
         <dl className="grid grid-cols-4 gap-px border-y border-[var(--line)] bg-[var(--line)]">
-          <MetricCell label="Spend" value={fmt.compact(s.account.spend)} prefix="$" />
+          <MetricCell label={s.window === '30' ? 'Spend · 30d' : 'Spend · all time'} value={fmt.compact(s.account.spend)} prefix="$" />
           <MetricCell label="ROAS" value={fmt.ratio(s.kpis?.roas)} />
           <MetricCell label="Ads" value={fmt.int(s.ads)} />
           <MetricCell label="Concepts" value={fmt.int(s.concepts)} />
