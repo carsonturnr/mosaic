@@ -11,3 +11,6 @@ export const WorkspaceModeContext = createContext<WorkspaceMode>({ base: '/app',
 export function useWorkspaceMode(): WorkspaceMode {
   return useContext(WorkspaceModeContext)
 }
+
+/** localStorage key: the brand last opened, so /app returns to it. */
+export const LAST_WORKSPACE = 'mosaic:last-workspace'

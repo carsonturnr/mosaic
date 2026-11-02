@@ -4,7 +4,6 @@ import {
   ChevronsUpDown,
   FileText,
   FlaskConical,
-  Layers,
   LayoutDashboard,
   LayoutGrid,
   LogOut,
@@ -20,7 +19,7 @@ import { Link, NavLink, Outlet, useLocation, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAsync } from '../lib/useAsync'
 import { useAuth } from '../lib/useAuth'
-import { useWorkspaceMode } from '../lib/workspaceBase'
+import { LAST_WORKSPACE, useWorkspaceMode } from '../lib/workspaceBase'
 import { LogoMark } from './Logo'
 import { buttonClass } from './buttonClass'
 
@@ -33,7 +32,7 @@ interface NavItem {
 }
 
 const WORKSPACE_NAV: NavItem[] = [
-  { to: '', label: 'Overview', icon: LayoutDashboard, end: true },
+  { to: '', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: 'library', label: 'Library', icon: LayoutGrid, also: '/ads/' },
   { to: 'analysis', label: 'Analysis', icon: BarChart3 },
   { to: 'report', label: 'Report', icon: FileText },
@@ -51,6 +50,11 @@ export function AppShell() {
   // the drawer belongs to the page it was opened on, so navigating closes it
   const [openOn, setOpenOn] = useState<string | null>(null)
   const open = openOn === pathname
+  const { readOnly } = useWorkspaceMode()
+  useEffect(() => {
+    if (!id || readOnly) return
+    try { localStorage.setItem(LAST_WORKSPACE, id) } catch { /* storage blocked */ }
+  }, [id, readOnly])
   const setOpen = (o: boolean) => setOpenOn(o ? pathname : null)
 
   return (
@@ -66,7 +70,7 @@ export function AppShell() {
 
       {open && <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setOpen(false)} aria-hidden />}
       <aside className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-[var(--line)] bg-[#0a0a0d] transition-transform lg:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`}>
-        <Sidebar workspaceId={id} onClose={() => setOpen(false)} />
+        <Sidebar workspaceId={id ?? (readOnly ? undefined : lastWorkspace())} onClose={() => setOpen(false)} />
       </aside>
 
       <div className="lg:pl-64">
@@ -76,6 +80,11 @@ export function AppShell() {
       </div>
     </div>
   )
+}
+
+/** Pages outside a brand (Evals) keep the brand's nav, so the sidebar never empties. */
+function lastWorkspace(): string | undefined {
+  try { return localStorage.getItem(LAST_WORKSPACE) ?? undefined } catch { return undefined }
 }
 
 function Sidebar({ workspaceId, onClose }: { workspaceId: string | undefined; onClose: () => void }) {
@@ -119,15 +128,14 @@ function Sidebar({ workspaceId, onClose }: { workspaceId: string | undefined; on
         {workspaceId && <div className="space-y-0.5">{WORKSPACE_NAV.map(item)}</div>}
         {workspaceId && !readOnly && (
           <div>
-            <p className="mb-1 px-2.5 text-[11px] font-medium uppercase tracking-wider text-[var(--faint)]">Workspace</p>
+            <p className="mb-1 px-2.5 text-[11px] font-medium uppercase tracking-wider text-[var(--faint)]">Brand</p>
             <div className="space-y-0.5">{OWNER_NAV.map(item)}</div>
           </div>
         )}
         {!readOnly && (
           <div>
-            <p className="mb-1 px-2.5 text-[11px] font-medium uppercase tracking-wider text-[var(--faint)]">Mosaic</p>
+            <p className="mb-1 px-2.5 text-[11px] font-medium uppercase tracking-wider text-[var(--faint)]">Quality</p>
             <div className="space-y-0.5">
-              {item({ to: '/app', label: 'All workspaces', icon: Layers, end: true })}
               {item({ to: '/app/evals', label: 'Evals', icon: FlaskConical })}
             </div>
           </div>
@@ -147,6 +155,7 @@ function WorkspaceSwitcher({ id }: { id: string }) {
     return data ?? []
   }, [])
   const current = list.data?.find((w) => w.id === id)
+  const many = (list.data?.length ?? 0) > 1
 
   useEffect(() => {
     if (!open) return
@@ -157,14 +166,14 @@ function WorkspaceSwitcher({ id }: { id: string }) {
 
   return (
     <div ref={box} className="relative">
-      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open}
-        className="flex w-full items-center gap-2.5 rounded-lg border border-[var(--line)] bg-[var(--panel)] px-2.5 py-2 text-left transition hover:border-[var(--line-strong)]">
+      <button type="button" onClick={() => many && setOpen((o) => !o)} aria-expanded={open} disabled={!many}
+        className="flex w-full items-center gap-2.5 rounded-lg border border-[var(--line)] bg-[var(--panel)] px-2.5 py-2 text-left transition enabled:hover:border-[var(--line-strong)]">
         <WorkspaceAvatar name={current?.name} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-medium">{current?.name ?? '…'}</span>
-          <span className="block text-[11px] text-[var(--faint)]">Workspace</span>
+          <span className="block text-[11px] text-[var(--faint)]">{current?.is_demo ? 'Demo brand' : 'Your brand'}</span>
         </span>
-        <ChevronsUpDown size={14} className="text-[var(--faint)]" />
+        {many && <ChevronsUpDown size={14} className="text-[var(--faint)]" />}
       </button>
       {open && (
         <div className="absolute inset-x-0 top-full z-10 mt-1 overflow-hidden rounded-lg border border-[var(--line-strong)] bg-[var(--panel-2)] py-1 shadow-2xl shadow-black/60">
@@ -176,10 +185,6 @@ function WorkspaceSwitcher({ id }: { id: string }) {
               {w.id === id && <Check size={14} className="text-[var(--accent-2)]" />}
             </Link>
           ))}
-          <div className="my-1 border-t border-[var(--line)]" />
-          <Link to="/app" onClick={() => setOpen(false)} className="block px-2.5 py-1.5 text-sm text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]">
-            Manage workspaces…
-          </Link>
         </div>
       )}
     </div>
@@ -193,7 +198,7 @@ function DemoWorkspace({ id }: { id: string }) {
       <WorkspaceAvatar name={ws.data ?? undefined} />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-medium">{ws.data ?? '…'}</span>
-        <span className="block text-[11px] text-[var(--faint)]">Demo workspace</span>
+        <span className="block text-[11px] text-[var(--faint)]">Demo brand</span>
       </span>
     </div>
   )

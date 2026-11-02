@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { Download, Image as ImageIcon, PenLine, Quote, RefreshCw, ShieldCheck, Sparkles, TriangleAlert } from 'lucide-react'
 import { AdRef, Badge, Button, Callout, Card, CardTitle, EmptyState, ErrorText, Loading, PageHeader, SectionTitle, Table } from '../components/ui'
 import { supabase } from '../lib/supabase'
@@ -48,7 +48,12 @@ export function Briefs() {
   const { id = '' } = useParams<{ id: string }>()
   const { base, readOnly } = useWorkspaceMode()
   const data = useAsync(() => load(id), [id])
-  const [request, setRequest] = useState('')
+  const [params] = useSearchParams()
+  const from = params.get('from')
+  // "Make variations" on a winning ad lands here with that ad prefilled
+  const [request, setRequest] = useState(from
+    ? `Variations of ad ${from}: keep what makes it win, and test new hooks, creators and formats around it.`
+    : '')
   const job = useAgentJob(id, 'brief', data.reload)
   const busy = job.busy
   const error = job.error
