@@ -21,7 +21,7 @@
 
 ---
 
-## 2. Current status (as of Oct 31, 2026)
+## 2. Current status (as of Nov 2, 2026)
 
 - Meta developer app **"Mosaic"** created (App ID `4146949778771922`), in Development mode, with the **Create & manage ads with Marketing API** use case. `ads_read`, `ads_management`, `business_management`, `pages_show_list`, `pages_read_engagement` show "Ready for testing".
 - Sandbox ad account created: **`act_1129851222828729`** ("Mosaic Dev", USD, America/Chicago), associated with the "Mosaic Dev" Facebook page.
@@ -38,7 +38,8 @@
 - **Weeks 5–7 code done (Oct 24):** analytics (`mosaic.analytics`: beta-binomial and gamma-Poisson shrinkage with priors capped at one typical ad, tag rankings incl. static vs video with a 10% minimum lift, weekly trends, robust-z outliers, fading ads, underfunded winners, concept clusters on tags + Gemini script embeddings with a spend-weighted diversity score) stored as `analysis_snapshots` (7/30/90/all) after every metrics sync; agents (`mosaic.agents`: one shared loop, strategist report and brief generator on `claude-opus-5-5` with typed read-only tools, strict submit tools, server-side refusal fallbacks, grounding validator with one retry); evals (`mosaic.evals`: planted problems 100% on 8 seeds gated in CI against `evals/baseline.json`, grounding pass rate, tagging F1 scorer; nightly `nightly_evals` on Modal writes `eval_runs`); web tabs Analysis, Report, Briefs, Evals page, brand memory; public read-only demo (`/demo`, fictional brand Driftwell, `seed --demo`).
 - **Oct 26:** agents live on `claude-opus-5-5` as background jobs (`agent_jobs`, Modal `agent_job`), traced in Langfuse. Tagging runs on `gemini-3.5-flash` with a 3-minute timeout; a free-tier daily cap (`QuotaExhausted`) defers the rest of the batch to the next run. Local dev workspaces (`source_kind = 'local'`, `mosaic.datasources.local`): real ad files plus stored tagging results, with synthetic performance planted on the ads' own tags; seeded once with `python -m mosaic.seed --local <folder> <tags.json>`, skipped by scheduled jobs, never demo-readable. A private workspace of 40 public dev ads is seeded this way; all planted patterns surface in its analysis.
 - **Oct 31:** taxonomy values defined in each dimension's description (read by the tagger and the blind labeling page alike); tagging F1 is scored nightly against a first 10 hand-labeled ads. Visual similarity: `gemini-embedding-2` embeds each static image, or the mean of up to 8 spread keyframes for a video (`creative_embeddings` kind `visual`); concept clustering averages visual and script distance, so statics with no copy cluster on what they show. Perception refreshes embeddings and analysis after tagging.
-- **Blocked / pending:** Facebook Login for Business needs a configuration id (`VITE_META_CONFIG_ID`). Tagging F1 needs the rest of the hand-labeled set.
+- **Nov 2:** Facebook Login for Business works end to end on the deployed app (configuration id in `VITE_META_CONFIG_ID`): login, long-lived token into Vault, `meta_live` data source, backfill and analysis. The sandbox account is not offered to personal logins, so it stays on the system user token.
+- **Blocked / pending:** Tagging F1 needs the rest of the hand-labeled set.
 - **Creatives for development:** 20–40 public ads from ONE brand via the Meta Ad Library, stored in Supabase Storage only; the local media folder is git-ignored. **Before anything public** (demo video, deployed link, public repo), swap them for the owner's own creatives or a fictional brand so synthetic metrics never sit on a real company's ads.
 
 ---
