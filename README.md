@@ -9,7 +9,15 @@ Built as a solo applied-AI project. The target is a deployed, demo-ready MVP by 
 [![CI](https://github.com/carsonturnr/mosaic/actions/workflows/ci.yml/badge.svg)](https://github.com/carsonturnr/mosaic/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-![Overview of the demo workspace](docs/images/overview.jpg)
+![Dashboard of the demo brand](docs/images/overview.jpg)
+
+## What you get
+
+- **A dashboard that says what to do.** The account's most reliable winner, with each metric against the account average; this week's moves (scale, cut, test) from the latest report; and plain facts about where the money goes ("68% of spend on talking head", "5.3 real concepts").
+- **Every ad broken down.** Hook, angle, persona, format, offer, proof and CTA for video and static, plus a scene-by-scene timeline where the first 3 seconds are their own scene.
+- **Rankings you can trust.** Tags ranked by ROAS, CPA, CTR, hook rate and more, with 90% intervals, so a lucky low-spend ad can't top the table.
+- **A strategist report and briefs.** Written by Claude from the analysis, with every number checked against the database before it's saved. "Make variations" turns the winning ad into a brief.
+- **Brand memory from a link.** Paste the brand's website and Mosaic drafts its product, audience, voice and claims to avoid for briefs to follow. When a site blocks automated reads, it falls back to web research.
 
 ## How it works
 
@@ -34,9 +42,11 @@ flowchart LR
 3. **Analyze.** Tag values are ranked by KPI with empirical-Bayes shrinkage, so a low-spend ad can't win by luck. The analysis also covers static vs. video, weekly trends, robust-z outliers within peer groups, fading ads, and underfunded winners. Near-duplicate ads are clustered into concepts, and the spend-weighted diversity score says how many real ideas the account is running.
 4. **Explain.** A strategist agent and a brief generator (Claude) call typed, read-only tools over the analytics layer. Every claim has to cite ad IDs and metric values. A grounding validator checks each cited number against the database before anything is saved.
 
-| Library | Analysis | Report |
+| Ad breakdown | Analysis | Report |
 | --- | --- | --- |
-| ![Creative library](docs/images/library.jpg) | ![Tag rankings with intervals](docs/images/analysis.jpg) | ![Strategist report with checked citations](docs/images/report.jpg) |
+| ![Tags and scene timeline for one ad](docs/images/breakdown.jpg) | ![Tag rankings with intervals](docs/images/analysis.jpg) | ![Strategist report with checked citations](docs/images/report.jpg) |
+
+Screenshots are from the public demo: Driftwell is a fictional brand, its results are synthetic, and its videos' scene breakdowns are written from their tags because there is no real footage.
 
 ## Results
 
