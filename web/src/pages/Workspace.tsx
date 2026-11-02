@@ -49,6 +49,7 @@ interface Overview {
   perf: AdPerf[]
   thumbs: Record<string, string>
   report: ReportBrief | null
+  hasGuidelines: boolean
 }
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -59,7 +60,7 @@ const SOURCE_LABEL: Record<string, string> = {
 }
 
 async function loadOverview(id: string): Promise<Overview> {
-  const [ws, ds, cAds, snap30, report, perf] = await Promise.all([
+  const [ws, ds, cAds, snap30, report, perf, memory] = await Promise.all([
     supabase.from('workspaces').select('*').eq('id', id).single(),
     supabase.from('data_sources').select('*').eq('workspace_id', id),
     supabase.from('ads').select('id', { count: 'exact', head: true }).eq('workspace_id', id),
@@ -67,6 +68,7 @@ async function loadOverview(id: string): Promise<Overview> {
     supabase.from('reports').select('id, created_at, grounding_passed, content')
       .eq('workspace_id', id).eq('kind', 'strategist').order('created_at', { ascending: false }).limit(1),
     fetchPerformance(id, '30'),
+    supabase.from('brand_memory').select('guidelines').eq('workspace_id', id).maybeSingle(),
   ])
   if (ws.error) throw new Error('Workspace not found, or it belongs to another account.')
   const sources = (ds.data ?? []) as DataSource[]
@@ -86,6 +88,7 @@ async function loadOverview(id: string): Promise<Overview> {
     perf,
     thumbs: await signedUrls(shown.map((p) => p ?? '')),
     report: (report.data?.[0] ?? null) as unknown as ReportBrief | null,
+    hasGuidelines: !!memory.data?.guidelines?.trim(),
   }
 }
 
@@ -259,8 +262,8 @@ function RoasChip({ roas, account }: { roas: number | null; account: number | nu
   if (roas == null) return null
   const up = account != null && roas >= account
   return (
-    <span className={`absolute left-2 top-2 rounded-md px-1.5 py-0.5 font-mono text-[11px] font-medium backdrop-blur ${up ? 'bg-[var(--good)]/20 text-[var(--good)]' : 'bg-black/50 text-[var(--text-2)]'}`}>
-      {fmt.ratio(roas)}
+    <span className={`absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-black/75 px-1.5 py-0.5 font-mono text-[11px] font-medium backdrop-blur ${up ? 'text-[var(--good)]' : 'text-[var(--text-2)]'}`}>
+      {up && <TrendingUp size={11} />}{fmt.ratio(roas)}
     </span>
   )
 }
@@ -398,7 +401,9 @@ function fingerprint(s: Snapshot): Fact[] {
     .sort((a, b) => (b.kpis.roas.value ?? 0) - (a.kpis.roas.value ?? 0))[0]
   if (bestHook) out.push({ big: fmt.ratio(bestHook.kpis.roas.value), label: `ROAS on ${bestHook.value} hooks`, note: `vs ${fmt.ratio(s.account_kpis.roas)} account` })
   const noProof = (s.tags.proof_type ?? []).find((t) => t.value === 'none')
-  if (noProof) out.push({ big: pct(noProof.spend_share), label: 'of spend with no proof', note: 'no reviews, stats or testimonials' })
+  const proofTop = top('proof_type')
+  if (noProof && noProof.spend_share >= 0.2) out.push({ big: pct(noProof.spend_share), label: 'of spend with no proof', note: 'no reviews, stats or testimonials' })
+  else if (proofTop && proofTop.value !== 'none') out.push({ big: pct(proofTop.spend_share), label: `of spend leans on ${proofTop.value}`, note: 'as its main proof' })
   if (s.concepts) out.push({ big: s.concepts.diversity.toFixed(1), label: 'real concepts', note: `across ${s.concepts.n_creatives} creatives` })
   return out.slice(0, 6)
 }
@@ -409,7 +414,7 @@ function Fingerprint({ s, root }: { s: Snapshot; root: string }) {
   return (
     <section>
       <SectionHead title="Your account at a glance" link={<Link to={`${root}/analysis`} className="hover:text-[var(--text)]">Analysis →</Link>} />
-      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(150px,1fr))]">
         {facts.map((f) => (
           <div key={f.label} className="rounded-xl border border-[var(--line)] bg-[var(--panel)] px-4 py-3.5">
             <dd className="font-mono text-2xl font-medium tracking-tight">{f.big}</dd>
@@ -440,7 +445,7 @@ function GettingStarted({ root, o, onConnect, busy }: { root: string; o: Overvie
   const steps = [
     { done: o.sources.length > 0, label: 'Connect your Meta ad account', hint: 'Read-only. Mosaic never changes anything in it.' },
     { done: o.ads > 0, label: 'Import your ads', hint: '90 days of ads and results, synced every 4 hours.' },
-    { done: !!o.snap, label: 'Review the analysis', hint: 'What wins, with low-spend luck shrunk out.', to: `${root}/analysis` },
+    { done: o.hasGuidelines, label: 'Teach Mosaic your brand', hint: 'Paste your website; briefs follow what it learns.', to: `${root}/settings` },
     { done: !!o.report, label: 'Get your strategist report', hint: 'What to scale, cut and test next.', to: `${root}/report` },
   ]
   if (steps.every((s) => s.done)) return null

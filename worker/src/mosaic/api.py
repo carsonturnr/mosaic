@@ -28,6 +28,7 @@ class Deps:
 
     store_factory: Callable[[], Store]
     storage_factory: Callable[[Store], Storage]
+    llm_factory: Callable[[Settings], Any]
     settings_factory: Callable[[], Settings]
     verify_jwt: Callable[[str], str | None]
     spawn: Callable[[str], None]
@@ -36,6 +37,7 @@ class Deps:
         self.settings_factory = Settings.from_env
         self.store_factory = self._default_store
         self.storage_factory = lambda store: SupabaseStorage(store.client)  # type: ignore[attr-defined]
+        self.llm_factory = jobs.build_llm
         self.verify_jwt = lambda token: verify_supabase_jwt(token)
         self.spawn = lambda job_id: _spawn_modal(job_id)
 
@@ -247,6 +249,27 @@ def meta_connect(
     ds = store.select("data_sources", "*", id=ds_id)[0]
     background.add_task(jobs.backfill, store, settings, ds)
     return MetaConnectResponse(data_source_id=ds_id, backfill_started=True)
+
+
+class BrandLearnRequest(BaseModel):
+    url: str
+
+
+@app.post("/workspaces/{workspace_id}/brand/learn")
+def brand_learn(workspace_id: str, body: BrandLearnRequest, principal: Auth) -> dict[str, Any]:
+    """Draft brand guidelines from the brand's website. The owner reviews and saves them."""
+    from mosaic.brand import BrandURLError, learn_brand
+
+    store, settings = deps.store_factory(), deps.settings_factory()
+    require_workspace(store, principal, workspace_id)
+    url = body.url.strip()
+    if url and "://" not in url:
+        url = f"https://{url}"
+    try:
+        profile = learn_brand(deps.llm_factory(settings), url, workspace_id)
+    except BrandURLError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return {"profile": profile.model_dump(), "guidelines": profile.guidelines()}
 
 
 @app.delete("/workspaces/{workspace_id}/meta")
