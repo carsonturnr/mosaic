@@ -1,7 +1,9 @@
 import { useState, type FormEvent } from 'react'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { BrandMemory } from '../components/BrandMemory'
-import { PageHeader } from '../components/ui'
+import { Button, Card, PageHeader } from '../components/ui'
+import { workerApi } from '../lib/api'
+import { supabase } from '../lib/supabase'
 import {
   createCustomTag,
   deleteCustomTag,
@@ -139,7 +141,76 @@ export function Settings() {
         </ul>
       </section>
       <BrandMemory workspaceId={id} />
+      <DataControls workspaceId={id} onError={setError} />
     </div>
+  )
+}
+
+/** Meta's data deletion requirement: disconnect, or delete the workspace and everything in it. */
+function DataControls({ workspaceId, onError }: { workspaceId: string; onError: (e: string | null) => void }) {
+  const navigate = useNavigate()
+  const [confirmName, setConfirmName] = useState('')
+  const [busy, setBusy] = useState(false)
+  const info = useAsync(async () => {
+    const [ws, meta] = await Promise.all([
+      supabase.from('workspaces').select('name, is_demo').eq('id', workspaceId).single(),
+      supabase.from('data_sources').select('meta_ad_account_id, last_synced_at').eq('workspace_id', workspaceId).eq('kind', 'meta_live'),
+    ])
+    return { name: ws.data?.name ?? '', isDemo: ws.data?.is_demo ?? false, meta: meta.data ?? [] }
+  }, [workspaceId])
+
+  const run = async (fn: () => Promise<void>) => {
+    onError(null)
+    setBusy(true)
+    try {
+      await fn()
+    } catch (e) {
+      onError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+  const disconnect = () => run(async () => { await workerApi.metaDisconnect(workspaceId); info.reload() })
+  const remove = () => run(async () => { await workerApi.deleteWorkspace(workspaceId); navigate('/app') })
+
+  if (!info.data) return null
+  const { name, isDemo, meta } = info.data
+  return (
+    <section className="mt-12">
+      <h2 className="text-base font-semibold">Data</h2>
+      <p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">
+        Disconnecting deletes the stored Meta access token and stops syncing. Deleting the workspace removes every ad,
+        file, tag, report and token in it. Neither can be undone.
+      </p>
+      <Card className="mt-4 space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium">Meta connection</p>
+            <p className="mt-0.5 text-xs text-[var(--muted)]">
+              {meta.length
+                ? `${meta.map((m) => m.meta_ad_account_id).join(', ')}${meta[0]?.last_synced_at ? ` · last synced ${new Date(meta[0].last_synced_at).toLocaleString()}` : ''}`
+                : 'Not connected. Connect an ad account from the Overview.'}
+            </p>
+          </div>
+          {meta.length > 0 && (
+            <ConfirmButton label="Disconnect" confirm="Disconnect Meta?" onConfirm={() => void disconnect()} />
+          )}
+        </div>
+        {!isDemo && (
+          <div className="border-t border-[var(--line)] pt-5">
+            <p className="text-sm font-medium">Delete workspace</p>
+            <p className="mt-0.5 text-xs text-[var(--muted)]">Type <span className="font-mono text-[var(--text-2)]">{name}</span> to confirm.</p>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <input value={confirmName} onChange={(e) => setConfirmName(e.target.value)} aria-label="Workspace name"
+                className="h-9 flex-1 px-3 text-sm" />
+              <Button variant="danger" disabled={busy || confirmName !== name} onClick={() => void remove()}>
+                {busy ? 'Deleting…' : 'Delete workspace'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Card>
+    </section>
   )
 }
 

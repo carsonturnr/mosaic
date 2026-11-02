@@ -4,6 +4,7 @@ import { useAuth } from '../lib/useAuth'
 import { LogoMark } from './Logo'
 
 export const REPO = 'https://github.com/carsonturnr/mosaic'
+export const CONTACT = 'carson@creation.sh'
 
 export function SiteHeader() {
   const { session } = useAuth()
@@ -44,9 +45,10 @@ export function SiteFooter() {
           <LogoMark className="h-4 w-4" />
           <span>© {YEAR} Mosaic · Open source under the MIT license</span>
         </div>
-        <nav className="flex gap-5">
+        <nav className="flex flex-wrap gap-x-5 gap-y-2">
           <Link to="/privacy" className="hover:text-[var(--site-text)]">Privacy</Link>
           <Link to="/terms" className="hover:text-[var(--site-text)]">Terms</Link>
+          <Link to="/data-deletion" className="hover:text-[var(--site-text)]">Data deletion</Link>
           <a href={REPO} className="hover:text-[var(--site-text)]">GitHub</a>
         </nav>
       </div>

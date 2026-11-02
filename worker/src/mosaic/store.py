@@ -136,6 +136,9 @@ class MemoryStore:
             return sid
         if fn == "vault_read_secret":
             return self.secrets[params["p_id"]][1]
+        if fn == "vault_delete_secret":
+            self.secrets.pop(params["p_id"], None)
+            return None
         raise NotImplementedError(fn)
 
 

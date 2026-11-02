@@ -1,9 +1,9 @@
-import { Prose, SitePage } from '../components/SiteFrame'
+import { CONTACT, Prose, SitePage } from '../components/SiteFrame'
 
 export function Terms() {
   return (
     <SitePage>
-      <Prose title="Terms of Service" updated="October 21, 2026">
+      <Prose title="Terms of Service" updated="November 2, 2026">
         <p>
           These terms govern your use of Mosaic. By creating an account or connecting an ad account you agree
           to them.
@@ -43,9 +43,7 @@ export function Terms() {
         </p>
         <h2 className="pt-2 text-lg font-semibold">Contact</h2>
         <p>
-          <a className="underline" href="https://github.com/carsonturnr/mosaic/issues">
-            open an issue on GitHub
-          </a>
+          <a className="underline" href={`mailto:${CONTACT}`}>{CONTACT}</a>
         </p>
       </Prose>
     </SitePage>

@@ -1,9 +1,10 @@
-import { Prose, SitePage } from '../components/SiteFrame'
+import { Link } from 'react-router-dom'
+import { CONTACT, Prose, SitePage } from '../components/SiteFrame'
 
 export function Privacy() {
   return (
     <SitePage>
-      <Prose title="Privacy Policy" updated="October 21, 2026">
+      <Prose title="Privacy Policy" updated="November 2, 2026">
         <p>
           Mosaic ("we", "us") is an analytics tool for Meta advertising accounts. This policy explains what
           we collect, why, and what we do with it. The short version: we read your ad data to analyze it for
@@ -17,8 +18,9 @@ export function Privacy() {
         </p>
         <p>
           <strong>Meta advertising data.</strong> When you connect a Meta ad account, we use the Meta Marketing
-          API with the permissions you grant (<code>ads_read</code>, and <code>ads_management</code> only for
-          reading creative assets) to import campaigns, ad sets, ads, ad creatives (video and image files,
+          API with the permissions you grant (<code>ads_read</code> to read ads and results,{' '}
+          <code>business_management</code> to list the ad accounts you can choose from, and{' '}
+          <code>ads_management</code> only to read creative files) to import campaigns, ad sets, ads, ad creatives (video and image files,
           primary text, headlines, calls to action) and daily performance metrics such as spend, impressions,
           clicks, conversions and video view metrics. We read this data on a schedule to keep your workspace
           current. We do not create, edit, pause or delete anything in your ad account.
@@ -49,24 +51,24 @@ export function Privacy() {
 
         <h2 className="pt-2 text-lg font-semibold">Retention and deletion</h2>
         <p>
-          Your data is retained while your workspace exists. You can disconnect your Meta account at any time,
-          which revokes our access and stops syncing. You can request deletion of your workspace and all data
-          derived from it by contacting us, and we will complete it within 30 days. You can also remove Mosaic
-          from your Meta account under Business Integrations in your Facebook settings.
+          Your data is retained while your workspace exists. In a workspace's Settings you can disconnect Meta,
+          which deletes our stored access token and stops syncing, or delete the workspace, which immediately
+          removes every ad, file, metric and everything derived from them. To delete your whole account, email
+          us and we will complete it within 30 days. You can also remove Mosaic under Business Integrations in
+          your Facebook settings. Step-by-step instructions are on the{' '}
+          <Link className="underline" to="/data-deletion">data deletion page</Link>.
         </p>
 
         <h2 className="pt-2 text-lg font-semibold">Your rights</h2>
         <p>
-          You may request a copy of your data, correction, or deletion at any time. Contact us using the link
-          below.
+          You may request a copy of your data, correction, or deletion at any time. Email us at{' '}
+          <a className="underline" href={`mailto:${CONTACT}`}>{CONTACT}</a>.
         </p>
 
         <h2 className="pt-2 text-lg font-semibold">Changes and contact</h2>
         <p>
           We will post changes to this policy on this page and update the date above. Questions:{' '}
-          <a className="underline" href="https://github.com/carsonturnr/mosaic/issues">
-            open an issue on GitHub
-          </a>
+          <a className="underline" href={`mailto:${CONTACT}`}>{CONTACT}</a>
           .
         </p>
       </Prose>

@@ -226,3 +226,65 @@ def test_perception_only_runs_on_live_meta_sources() -> None:
                 {"id": "d", "workspace_id": "w", "kind": kind},
                 storage=None,
             )
+
+
+def _workspace_with_media() -> tuple[MemoryStore, Any]:
+    from mosaic.media import MemoryStorage
+
+    store, storage = MemoryStore(), MemoryStorage()
+    store.insert("workspaces", {"id": "ws", "owner_id": "u1", "name": "W", "is_demo": False})
+    sid = store_token(store, "ws", "LONG")
+    store.insert(
+        "data_sources",
+        {
+            "workspace_id": "ws",
+            "kind": "meta_live",
+            "meta_ad_account_id": "act_1",
+            "token_secret_id": sid,
+        },
+    )
+    store.insert(
+        "creatives",
+        {
+            "id": "c1",
+            "workspace_id": "ws",
+            "storage_path": "ws/c1/original.mp4",
+            "thumbnail_path": "https://example.com/t.jpg",
+        },
+    )
+    store.insert("scenes", {"creative_id": "c1", "idx": 0, "keyframe_path": "ws/c1/scene_0.jpg"})
+    for path in ("ws/c1/original.mp4", "ws/c1/scene_0.jpg", "other/c9/original.mp4"):
+        storage.files[path] = (b"x", "video/mp4")
+    api.deps.storage_factory = lambda _store: storage
+    return store, storage
+
+
+def test_disconnect_meta_forgets_the_token_and_keeps_imported_ads() -> None:
+    store, _ = _workspace_with_media()
+    sid = store.tables["data_sources"][0]["token_secret_id"]
+    c = _client(store)
+    r = c.delete("/workspaces/ws/meta", headers={"Authorization": "Bearer user-jwt"})
+    assert r.status_code == 200 and r.json() == {"disconnected": 1}
+    assert store.tables["data_sources"] == []
+    assert sid not in store.secrets
+    assert len(store.tables["creatives"]) == 1
+
+
+def test_delete_workspace_removes_its_files_token_and_row_only() -> None:
+    store, storage = _workspace_with_media()
+    c = _client(store)
+    other = c.delete("/workspaces/ws", headers={"Authorization": "Bearer other-jwt"})
+    assert other.status_code == 404
+    r = c.delete("/workspaces/ws", headers={"Authorization": "Bearer user-jwt"})
+    assert r.status_code == 200 and r.json() == {"meta_sources": 1, "files": 2}
+    assert list(storage.files) == ["other/c9/original.mp4"]
+    assert store.secrets == {}
+    assert store.tables["workspaces"] == []
+
+
+def test_demo_workspace_cannot_be_deleted() -> None:
+    store, _ = _workspace_with_media()
+    store.update("workspaces", {"is_demo": True}, id="ws")
+    r = _client(store).delete("/workspaces/ws", headers={"Authorization": "Bearer user-jwt"})
+    assert r.status_code == 400
+    assert len(store.tables["workspaces"]) == 1

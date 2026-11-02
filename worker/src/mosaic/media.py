@@ -37,6 +37,8 @@ class Storage(Protocol):
 
     def download(self, path: str, dest: Path) -> Path: ...
 
+    def remove(self, paths: list[str]) -> None: ...
+
 
 class SupabaseStorage:
     def __init__(self, client: Any, bucket: str = BUCKET) -> None:
@@ -51,6 +53,10 @@ class SupabaseStorage:
         dest.write_bytes(self._bucket.download(path))
         return dest
 
+    def remove(self, paths: list[str]) -> None:
+        for i in range(0, len(paths), 500):
+            self._bucket.remove(paths[i : i + 500])
+
 
 class MemoryStorage:
     def __init__(self) -> None:
@@ -63,6 +69,10 @@ class MemoryStorage:
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(self.files[path][0])
         return dest
+
+    def remove(self, paths: list[str]) -> None:
+        for p in paths:
+            self.files.pop(p, None)
 
 
 @dataclass(frozen=True)

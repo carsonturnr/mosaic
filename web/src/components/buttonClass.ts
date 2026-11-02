@@ -1,8 +1,9 @@
 // Shared with links styled as buttons, so it lives outside the component file.
 
-export type Variant = 'primary' | 'secondary' | 'ghost' | 'accent'
+export type Variant = 'primary' | 'secondary' | 'ghost' | 'accent' | 'danger'
 const VARIANT: Record<Variant, string> = {
   primary: 'bg-[var(--text)] text-[var(--bg)] hover:bg-white',
+  danger: 'border border-[var(--bad)]/40 bg-[var(--bad-soft)] text-[var(--bad)] hover:border-[var(--bad)]/70',
   accent: 'bg-[var(--accent)] text-white hover:bg-[var(--accent-2)] hover:text-[var(--bg)]',
   secondary: 'border border-[var(--line-strong)] bg-[var(--panel-2)] text-[var(--text)] hover:border-white/25',
   ghost: 'text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]',

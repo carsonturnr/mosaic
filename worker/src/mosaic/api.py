@@ -18,6 +18,7 @@ from pydantic import BaseModel
 from mosaic import jobs
 from mosaic.config import Settings
 from mosaic.datasources.meta import GRAPH, MetaAPIError, MetaClient
+from mosaic.media import Storage, SupabaseStorage
 from mosaic.store import Store, SupabaseStore
 from mosaic.vault import store_token
 
@@ -26,6 +27,7 @@ class Deps:
     """Resolved lazily so tests can swap the store and settings."""
 
     store_factory: Callable[[], Store]
+    storage_factory: Callable[[Store], Storage]
     settings_factory: Callable[[], Settings]
     verify_jwt: Callable[[str], str | None]
     spawn: Callable[[str], None]
@@ -33,6 +35,7 @@ class Deps:
     def __init__(self) -> None:
         self.settings_factory = Settings.from_env
         self.store_factory = self._default_store
+        self.storage_factory = lambda store: SupabaseStorage(store.client)  # type: ignore[attr-defined]
         self.verify_jwt = lambda token: verify_supabase_jwt(token)
         self.spawn = lambda job_id: _spawn_modal(job_id)
 
@@ -244,6 +247,29 @@ def meta_connect(
     ds = store.select("data_sources", "*", id=ds_id)[0]
     background.add_task(jobs.backfill, store, settings, ds)
     return MetaConnectResponse(data_source_id=ds_id, backfill_started=True)
+
+
+@app.delete("/workspaces/{workspace_id}/meta")
+def meta_disconnect(workspace_id: str, principal: Auth) -> dict[str, int]:
+    """Forget the Meta token and stop syncing. Imported ads stay until the workspace is deleted."""
+    from mosaic.deletion import disconnect_meta
+
+    store = deps.store_factory()
+    require_workspace(store, principal, workspace_id)
+    return {"disconnected": disconnect_meta(store, workspace_id)}
+
+
+@app.delete("/workspaces/{workspace_id}")
+def workspace_delete(workspace_id: str, principal: Auth) -> dict[str, int]:
+    """Delete the workspace and everything in it: rows, media files and the Meta token."""
+    from mosaic.deletion import delete_workspace
+
+    store = deps.store_factory()
+    require_workspace(store, principal, workspace_id)
+    ws = store.select("workspaces", "is_demo", id=workspace_id)
+    if ws and ws[0].get("is_demo"):
+        raise HTTPException(400, "the public demo workspace can't be deleted from the app")
+    return delete_workspace(store, deps.storage_factory(store), workspace_id)
 
 
 def exchange_long_lived_token(settings: Settings, short_lived: str) -> str:

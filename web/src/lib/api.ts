@@ -15,13 +15,13 @@ export interface MetaAdAccount {
   currency: string | null
 }
 
-async function call<T>(path: string, body?: unknown): Promise<T> {
+async function call<T>(path: string, body?: unknown, method: 'POST' | 'DELETE' = 'POST'): Promise<T> {
   if (!base) throw new Error('VITE_WORKER_API_URL is not set')
   const { data } = await supabase.auth.getSession()
   const token = data.session?.access_token
   if (!token) throw new Error('not signed in')
   const res = await fetch(`${base}${path}`, {
-    method: 'POST',
+    method,
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
   })
@@ -51,4 +51,8 @@ export const workerApi = {
       `/workspaces/${workspaceId}/meta/connect`,
       { user_access_token: userAccessToken, ad_account_id: adAccountId },
     ),
+  metaDisconnect: (workspaceId: string) =>
+    call<{ disconnected: number }>(`/workspaces/${workspaceId}/meta`, undefined, 'DELETE'),
+  deleteWorkspace: (workspaceId: string) =>
+    call<{ meta_sources: number; files: number }>(`/workspaces/${workspaceId}`, undefined, 'DELETE'),
 }

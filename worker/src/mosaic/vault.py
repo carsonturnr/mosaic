@@ -19,3 +19,7 @@ def read_token(store: Store, secret_id: str) -> str:
     if not token:
         raise RuntimeError(f"vault secret {secret_id} not found")
     return str(token)
+
+
+def delete_token(store: Store, secret_id: str) -> None:
+    store.rpc("vault_delete_secret", {"p_id": secret_id})

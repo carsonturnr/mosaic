@@ -12,6 +12,7 @@ import { SignIn } from './pages/SignIn'
 import { Terms } from './pages/Terms'
 import { AdDetail } from './pages/AdDetail'
 import { Briefs } from './pages/Briefs'
+import { DataDeletion } from './pages/DataDeletion'
 import { DemoEntry } from './pages/DemoEntry'
 import { Evals } from './pages/Evals'
 import { Analysis } from './pages/Analysis'
@@ -27,6 +28,7 @@ export default function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
+          <Route path="/data-deletion" element={<DataDeletion />} />
           <Route path="/sign-in" element={<SignIn />} />
           <Route path="/demo" element={<DemoEntry />} />
           <Route element={<DemoMode />}>
