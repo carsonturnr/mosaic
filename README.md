@@ -4,7 +4,7 @@
 
 Built as a solo applied-AI project. The target is a deployed, demo-ready MVP by December 2026. Current status is tracked in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §2.
 
-**Live:** [mosaicads.vercel.app](https://mosaicads.vercel.app) · **[Try the demo](https://mosaicads.vercel.app/demo)** (fictional brand, no sign-in)
+**Live:** [mosaicads.vercel.app](https://mosaicads.vercel.app)
 
 [![CI](https://github.com/carsonturnr/mosaic/actions/workflows/ci.yml/badge.svg)](https://github.com/carsonturnr/mosaic/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -46,7 +46,7 @@ flowchart LR
 | --- | --- | --- |
 | ![Tags and scene timeline for one ad](docs/images/breakdown.jpg) | ![Tag rankings with intervals](docs/images/analysis.jpg) | ![Strategist report with checked citations](docs/images/report.jpg) |
 
-Screenshots are from the public demo: Driftwell is a fictional brand, its results are synthetic, and its videos' scene breakdowns are written from their tags because there is no real footage.
+Screenshots are from an earlier demo workspace for a fictional brand; its results are synthetic.
 
 ## Results
 
