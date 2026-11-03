@@ -1,7 +1,8 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Outlet, Route, Routes } from 'react-router-dom'
 import { AppShell } from './components/AppShell'
 import { RequireAuth } from './components/RequireAuth'
 import { AuthProvider } from './lib/auth'
+import { WorkspaceModeContext } from './lib/workspaceBase'
 import { Landing } from './pages/Landing'
 import { Privacy } from './pages/Privacy'
 import { Report } from './pages/Report'
@@ -12,6 +13,7 @@ import { Terms } from './pages/Terms'
 import { AdDetail } from './pages/AdDetail'
 import { Briefs } from './pages/Briefs'
 import { DataDeletion } from './pages/DataDeletion'
+import { DemoEntry } from './pages/DemoEntry'
 import { Evals } from './pages/Evals'
 import { Analysis } from './pages/Analysis'
 import { Library } from './pages/Library'
@@ -28,7 +30,10 @@ export default function App() {
           <Route path="/terms" element={<Terms />} />
           <Route path="/data-deletion" element={<DataDeletion />} />
           <Route path="/sign-in" element={<SignIn />} />
-          <Route path="/demo/*" element={<Navigate to="/" replace />} />
+          <Route path="/demo" element={<DemoEntry />} />
+          <Route element={<DemoMode />}>
+            <Route path="/demo/w/:id" element={<AppShell />}>{workspacePages(false)}</Route>
+          </Route>
           <Route element={<RequireAuth />}>
             <Route element={<AppShell />}>
               <Route path="/app" element={<Workspaces />} />
@@ -55,5 +60,13 @@ function workspacePages(owner: boolean) {
       {owner && <Route path="settings" element={<Settings />} />}
       {owner && <Route path="label" element={<Label />} />}
     </>
+  )
+}
+
+function DemoMode() {
+  return (
+    <WorkspaceModeContext.Provider value={{ base: '/demo', readOnly: true }}>
+      <Outlet />
+    </WorkspaceModeContext.Provider>
   )
 }

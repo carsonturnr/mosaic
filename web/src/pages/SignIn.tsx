@@ -74,6 +74,9 @@ export function SignIn() {
           )}
           {error && <p className="mt-3 text-sm text-[#f2827f]">{error}</p>}
         </div>
+        <p className="mt-6 text-center text-sm text-[var(--site-muted)]">
+          Just looking? <Link to="/demo" className="text-[var(--site-text)] underline decoration-white/30 underline-offset-4 hover:decoration-white">Explore the live demo</Link>
+        </p>
       </main>
     </div>
   )

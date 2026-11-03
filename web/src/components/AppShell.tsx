@@ -4,6 +4,7 @@ import {
   ChevronsUpDown,
   FileText,
   FlaskConical,
+  Info,
   LayoutDashboard,
   LayoutGrid,
   LogOut,
@@ -75,6 +76,7 @@ export function AppShell() {
 
       <div className="lg:pl-64">
         <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-8 lg:py-10">
+          {readOnly && id && <DemoNotice id={id} />}
           <Outlet />
         </main>
       </div>
@@ -233,11 +235,23 @@ function AccountFooter() {
   )
 }
 
+/** The demo workspace's own notice (whose ads these are, that results are synthetic). */
+function DemoNotice({ id }: { id: string }) {
+  const notice = useAsync(async () => (await supabase.from('workspaces').select('demo_notice').eq('id', id).single()).data?.demo_notice, [id])
+  if (!notice.data) return null
+  return (
+    <div role="note" className="mb-6 flex gap-2.5 rounded-lg border border-[#f2c27f]/30 bg-[#f2c27f]/[0.08] px-3.5 py-2.5 text-xs leading-relaxed text-[var(--text-2)]">
+      <Info size={14} className="mt-0.5 shrink-0 text-[#f2c27f]" />
+      <p>{notice.data}</p>
+    </div>
+  )
+}
+
 function DemoFooter() {
   return (
     <div className="rounded-lg border border-[var(--accent)]/25 bg-[var(--accent-soft)] p-3">
       <p className="text-xs font-medium text-[var(--accent-2)]">Live demo</p>
-      <p className="mt-1 text-xs leading-relaxed text-[var(--text-2)]">A fictional brand with synthetic results. Read-only.</p>
+      <p className="mt-1 text-xs leading-relaxed text-[var(--text-2)]">Example ads with synthetic results. Read-only.</p>
       <a href="/#waitlist" className={`${buttonClass('primary', 'sm')} mt-3 w-full`}>Get early access</a>
     </div>
   )

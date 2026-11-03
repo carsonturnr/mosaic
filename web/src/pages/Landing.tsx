@@ -37,6 +37,11 @@ export function Landing() {
             <div id="waitlist" className="rise rise-3 mt-9 scroll-mt-24">
               <WaitlistForm product="mosaic" source="landing-hero" align="center" />
             </div>
+            <p className="rise rise-3 mt-4 text-sm">
+              <a href="/demo" className="text-[var(--site-text)] underline decoration-white/30 underline-offset-4 transition hover:decoration-white">
+                Or explore the live demo →
+              </a>
+            </p>
             <ul className="rise rise-3 mt-5 flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs text-[var(--site-muted)]">
               {['Read-only', 'Every claim cited', 'Free in early access'].map((t) => (
                 <li key={t} className="flex items-center gap-1.5">

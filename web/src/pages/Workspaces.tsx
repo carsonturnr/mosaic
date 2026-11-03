@@ -1,6 +1,6 @@
 import { ArrowRight, BarChart3, FileText, Link2, ScanSearch, Sparkles, X, type LucideIcon } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { Badge, Button, ErrorText, Loading } from '../components/ui'
 import { supabase } from '../lib/supabase'
 import { useAsync } from '../lib/useAsync'
@@ -61,6 +61,9 @@ function Welcome({ onCreate, error }: { onCreate: (name: string) => Promise<void
         <div className="mt-7 max-w-lg">
           <CreateForm onCreate={onCreate} autoFocus label="Brand name" />
         </div>
+        <p className="mt-4 text-xs text-[var(--muted)]">
+          Want to look around first? <Link to="/demo" className="font-medium text-[var(--accent-2)] hover:underline">Open the live demo</Link>: example ads with synthetic results.
+        </p>
       </div>
 
       <div className="mt-4"><ErrorText>{error}</ErrorText></div>

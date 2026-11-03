@@ -949,6 +949,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          demo_notice: string | null
           is_demo: boolean
           name: string
           owner_id: string
@@ -956,6 +957,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          demo_notice?: string | null
           is_demo?: boolean
           name: string
           owner_id: string
@@ -963,6 +965,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          demo_notice?: string | null
           is_demo?: boolean
           name?: string
           owner_id?: string
