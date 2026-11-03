@@ -105,6 +105,22 @@ class MetaClient:
             )
         raise AssertionError("unreachable")
 
+    def post(
+        self, path: str, data: dict[str, Any], files: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        """A write (only the sandbox seeder writes). Not retried: writes aren't idempotent."""
+        url = f"{GRAPH}/{self._version}/{path.lstrip('/')}"
+        resp = self._http.post(url, data={**data, **self._auth()}, files=files, timeout=600)
+        body = resp.json() if resp.content else {}
+        err = body.get("error") if isinstance(body, dict) else None
+        if resp.status_code >= 400 or err:
+            raise MetaAPIError(
+                (err or {}).get("code"),
+                (err or {}).get("error_user_msg") or (err or {}).get("message", resp.text[:200]),
+                (err or {}).get("error_subcode"),
+            )
+        return body
+
     def get_all(self, path: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """Follow `paging.next` until exhausted."""
         out: list[dict[str, Any]] = []
@@ -138,6 +154,8 @@ class MetaLiveSource:
         self.client = client
         self.account = ad_account_id if ad_account_id.startswith("act_") else f"act_{ad_account_id}"
         self.media_dir = media_dir
+        self._video_sources: dict[str, str] | None = None
+        self._creatives: dict[str, dict[str, Any]] = {}  # read along with the ads
 
     # -- structure ------------------------------------------------------------
 
@@ -171,7 +189,14 @@ class MetaLiveSource:
         ]
 
     def list_ads(self) -> list[Ad]:
-        rows = self.client.get_all(f"{self.account}/ads", {"fields": AD_FIELDS})
+        # Creative fields ride along with the ads: one paged read instead of one per creative.
+        fields = AD_FIELDS.replace("creative{id}", f"creative{{{CREATIVE_FIELDS}}}")
+        rows = self.client.get_all(f"{self.account}/ads", {"fields": fields})
+        for r in rows:
+            creative = r.get("creative") or {}
+            if creative.get("id"):
+                self._creatives[creative["id"]] = creative
+                r["creative"] = {"id": creative["id"]}  # the ad's raw row keeps just the id
         return [
             Ad(
                 external_id=r["id"],
@@ -187,15 +212,30 @@ class MetaLiveSource:
         ]
 
     def get_creative(self, creative_external_id: str) -> Creative:
-        r = self.client.get(creative_external_id, {"fields": CREATIVE_FIELDS})
+        r = self._creatives.get(creative_external_id) or self.client.get(
+            creative_external_id, {"fields": CREATIVE_FIELDS}
+        )
         return parse_creative(r, self._resolve_media_url)
 
     def _resolve_media_url(self, r: dict[str, Any], kind: CreativeType) -> str | None:
         if kind is CreativeType.VIDEO:
-            video_id = r.get("video_id") or _spec(r).get("video_data", {}).get("video_id")
-            if not video_id:
+            # The story spec names the uploaded video; the top-level id is the page's copy.
+            ids = [
+                str(v)
+                for v in (_spec(r).get("video_data", {}).get("video_id"), r.get("video_id"))
+                if v
+            ]
+            if not ids:
                 return None
-            v = self.client.get(str(video_id), {"fields": "source"})
+            if self._video_sources is None:
+                # One paged read for every video in the account. Reading a video by id
+                # needs page permissions the system user may not have (error #10).
+                rows = self.client.get_all(f"{self.account}/advideos", {"fields": "id,source"})
+                self._video_sources = {r["id"]: r["source"] for r in rows if r.get("source")}
+            for video_id in ids:
+                if video_id in self._video_sources:
+                    return self._video_sources[video_id]
+            v = self.client.get(ids[0], {"fields": "source"})
             return v.get("source")
         if r.get("image_url"):
             return r["image_url"]

@@ -161,8 +161,10 @@ def test_get_creative_resolves_video_source_and_image_hash() -> None:
     respx.get(f"{BASE}/cr1").mock(
         return_value=httpx.Response(200, json={"id": "cr1", "video_id": "v1", "body": "x"})
     )
-    respx.get(f"{BASE}/v1").mock(
-        return_value=httpx.Response(200, json={"id": "v1", "source": "https://cdn/v1.mp4"})
+    respx.get(f"{BASE}/{ACT}/advideos").mock(
+        return_value=httpx.Response(
+            200, json={"data": [{"id": "v1", "source": "https://cdn/v1.mp4"}]}
+        )
     )
     respx.get(f"{BASE}/cr2").mock(
         return_value=httpx.Response(
@@ -251,3 +253,32 @@ def test_download_media_hashes_file(tmp_path: Path) -> None:
     media = src.download_media(creative)
     assert media.path.read_bytes() == b"abc" and media.size_bytes == 3
     assert media.content_type == "video/mp4" and len(media.content_hash) == 64
+
+
+@respx.mock
+def test_creatives_come_with_the_ads_in_one_read() -> None:
+    respx.get(f"{BASE}/{ACT}/ads").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "data": [
+                    {
+                        "id": "a1",
+                        "adset_id": "s1",
+                        "creative": {
+                            "id": "cr1",
+                            "image_url": "https://cdn/1.jpg",
+                            "body": "copy",
+                        },
+                    }
+                ]
+            },
+        )
+    )
+    per_creative = respx.get(f"{BASE}/cr1").mock(return_value=httpx.Response(500))
+    src = MetaLiveSource(_client(), ACT)
+    ads = src.list_ads()
+    assert ads[0].raw and ads[0].raw["creative"] == {"id": "cr1"}
+    creative = src.get_creative("cr1")
+    assert creative.primary_text == "copy" and creative.media_url == "https://cdn/1.jpg"
+    assert not per_creative.called
