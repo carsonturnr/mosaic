@@ -39,9 +39,63 @@ def build_source(ds: Row, settings: Settings, store: Store) -> DataSource:
         from mosaic.seed import DEMO_DAYS, demo_start
 
         return DemoSource(start_date=demo_start(ds.get("created_at")), days=DEMO_DAYS)
+    if kind == "meta_sandbox":
+        return _sandbox_source(ds, settings, store)
     if kind == "local":
         raise ValueError("local data sources are seeded from files once and never synced")
     raise ValueError(f"unknown data source kind {kind!r}")
+
+
+def _sandbox_source(ds: Row, settings: Settings, store: Store) -> DataSource:
+    """The sandbox account read with the system user token (from Vault when the data
+    source has one, else the environment); results come from AI tags."""
+    from mosaic.datasources.sandbox import MetaSandboxSource
+    from mosaic.models import Creative, CreativeType
+    from mosaic.seed import DEMO_DAYS, demo_start
+
+    if ds.get("token_secret_id"):
+        token = read_token(store, ds["token_secret_id"])
+    elif settings.meta_access_token:
+        token = settings.meta_access_token
+    else:
+        raise RuntimeError("META_ACCESS_TOKEN (the system user token) is not set")
+    client = MetaClient(
+        token,
+        app_secret=settings.meta_app_secret,
+        version=settings.meta_graph_version,
+    )
+    live = MetaLiveSource(client, ds["meta_ad_account_id"])
+    rows = store.select("creatives", "external_id,type,duration_s", workspace_id=ds["workspace_id"])
+    creatives = {
+        r["external_id"]: Creative(
+            external_id=r["external_id"],
+            type=CreativeType(r["type"]),
+            duration_s=float(r["duration_s"]) if r.get("duration_s") is not None else None,
+        )
+        for r in rows
+    }
+    return MetaSandboxSource(
+        live,
+        ai_tags(store, ds["workspace_id"]),
+        creatives,
+        start_date=demo_start(ds.get("created_at")),
+        days=DEMO_DAYS,
+    )
+
+
+def ai_tags(store: Store, workspace_id: str) -> dict[str, dict[str, str]]:
+    """creative external id -> {dimension: value} from the workspace's AI tags."""
+    creatives = store.select("creatives", "id,external_id", workspace_id=workspace_id)
+    ext = {c["id"]: c["external_id"] for c in creatives}
+    out: dict[str, dict[str, str]] = {}
+    if not ext:
+        return out
+    rows = store.select(
+        "creative_tags", "creative_id,dimension_key,value", creative_id=list(ext), source="ai"
+    )
+    for r in rows:
+        out.setdefault(ext[r["creative_id"]], {})[r["dimension_key"]] = r["value"]
+    return out
 
 
 def is_synced(ds: Row) -> bool:
@@ -177,8 +231,8 @@ def build_llm(settings: Settings) -> Any:
 
 
 def has_real_media(ds: Row) -> bool:
-    """Only live Meta accounts have creative files to download and tag."""
-    return ds["kind"] == "meta_live"
+    """Only Meta accounts (live or sandbox) have creative files to download and tag."""
+    return ds["kind"] in ("meta_live", "meta_sandbox")
 
 
 def perceive(store: Store, settings: Settings, ds: Row, storage: Any, limit: int = 50) -> Row:
@@ -217,6 +271,10 @@ def perceive(store: Store, settings: Settings, ds: Row, storage: Any, limit: int
             embed(store, settings, ds, storage)
         except Exception:
             pass  # recorded in sync_runs by run_job
+        if ds["kind"] == "meta_sandbox":
+            # Sandbox results are planted on the tags, so new tags mean new results.
+            today = _today()
+            metrics(store, settings, ds, "backfill", today - timedelta(days=BACKFILL_DAYS), today)
         analysis(store, ds)
     return result
 

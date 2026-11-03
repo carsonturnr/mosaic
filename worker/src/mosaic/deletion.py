@@ -13,9 +13,12 @@ from mosaic.vault import delete_token
 
 
 def disconnect_meta(store: Store, workspace_id: str) -> int:
-    """Delete the stored Meta token and the live data source; syncing stops."""
+    """Delete the stored Meta token and the Meta data source; syncing stops."""
     sources = store.select(
-        "data_sources", "id,token_secret_id", workspace_id=workspace_id, kind="meta_live"
+        "data_sources",
+        "id,token_secret_id",
+        workspace_id=workspace_id,
+        kind=["meta_live", "meta_sandbox"],
     )
     for ds in sources:
         if ds.get("token_secret_id"):

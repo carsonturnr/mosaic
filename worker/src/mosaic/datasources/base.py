@@ -1,9 +1,11 @@
 """The one interface every read goes through (docs/ARCHITECTURE.md §6).
 
 Implementations:
-- MetaLiveSource          Marketing API (Graph API v26.0)            [todo]
-- SandboxSyntheticSource  sandbox structure + synthetic ads/metrics  [stub]
-- DemoSource              fully local fixtures                        [todo]
+- MetaLiveSource          Marketing API (Graph API v26.0)
+- MetaSandboxSource       sandbox ads via the API + results planted on their AI tags
+- SandboxSyntheticSource  fully synthetic ads and metrics
+- DemoSource              fully local fixtures (the public demo brand)
+- LocalSource             real ad files + stored tags + synthetic metrics
 """
 
 from __future__ import annotations

@@ -71,6 +71,7 @@ PROOF_TYPES = [
 CTAS = ["shop now", "shop now", "learn more", "get offer", "sign up"]
 
 MIN_WINNERS = 3
+MIN_ADS = 12  # every planted pattern needs room
 
 PatternKind = Literal[
     "winning_hook", "fatigue", "near_duplicate", "static_vs_video", "hidden_winner"
@@ -119,8 +120,8 @@ class SyntheticAccount:
         start_date: date = date(2026, 7, 21),
         days: int = 90,
     ) -> None:
-        if n_ads < 12:
-            raise ValueError("n_ads must be >= 12 so every planted pattern fits")
+        if n_ads < MIN_ADS:
+            raise ValueError(f"n_ads must be >= {MIN_ADS} so every planted pattern fits")
         self.seed = seed
         self.n_ads = n_ads
         self.start_date = start_date

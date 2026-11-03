@@ -1061,7 +1061,7 @@ export type Database = {
     Enums: {
       creative_type: "video" | "image" | "carousel"
       report_kind: "strategist" | "brief"
-      source_kind: "meta_live" | "sandbox_synthetic" | "demo" | "local"
+      source_kind: "meta_live" | "sandbox_synthetic" | "demo" | "local" | "meta_sandbox"
       tag_source: "ai" | "user"
     }
     CompositeTypes: {
@@ -1195,7 +1195,7 @@ export const Constants = {
     Enums: {
       creative_type: ["video", "image", "carousel"],
       report_kind: ["strategist", "brief"],
-      source_kind: ["meta_live", "sandbox_synthetic", "demo", "local"],
+      source_kind: ["meta_live", "sandbox_synthetic", "demo", "local", "meta_sandbox"],
       tag_source: ["ai", "user"],
     },
   },

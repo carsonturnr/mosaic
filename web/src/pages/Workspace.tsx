@@ -54,7 +54,8 @@ interface Overview {
 
 const SOURCE_LABEL: Record<string, string> = {
   meta_live: 'Meta ad account',
-  sandbox_synthetic: 'Meta sandbox + synthetic results',
+  sandbox_synthetic: 'Synthetic account',
+  meta_sandbox: 'Meta sandbox + synthetic results',
   demo: 'Demo data',
   local: 'Local files + synthetic results',
 }
@@ -156,7 +157,7 @@ export function Workspace() {
   const root = `${base}/w/${id}`
   const synced = o.sources.some((d) => d.kind !== 'local')
   const lastSync = o.sources.map((d) => d.last_synced_at).filter(Boolean).sort().at(-1)
-  const connected = o.sources.some((d) => d.kind === 'meta_live')
+  const connected = o.sources.some((d) => d.kind === 'meta_live' || d.kind === 'meta_sandbox')
   const winner = s ? pickWinner(s) : null
   const winnerPerf = o.perf.find((a) => a.ad_id === winner?.ad_id)
 
